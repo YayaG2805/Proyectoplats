@@ -19,11 +19,15 @@ import com.example.proyecto.presentation.flow.ModalityRoute
 import com.example.proyecto.presentation.home.HomeScreen
 import com.example.proyecto.presentation.newprofile.NewProfileScreen
 import com.example.proyecto.presentation.detail.DetailScreen
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.example.proyecto.presentation.history.HistoryViewModel
+import org.koin.androidx.compose.koinViewModel
 
-/* ──────────────────────────────────────────────────────────────
-   DESTINOS TYPE-SAFE (@Serializable)
-   Mantengo tu patrón y solo añado serialización.
-   ────────────────────────────────────────────────────────────── */
+
 @Serializable object SplashDest
 @Serializable object AuthDest
 @Serializable object ModalityDest
@@ -39,6 +43,8 @@ import com.example.proyecto.presentation.detail.DetailScreen
 fun AppNavHost() {
     val nav = rememberNavController()
     val budgetVM: BudgetFlowViewModel = koinViewModel()
+    val historyVM: HistoryViewModel = koinViewModel()
+    var selectedModality by rememberSaveable { mutableStateOf("MEDIO") }
 
     NavHost(navController = nav, startDestination = SplashDest) {
 
@@ -55,7 +61,7 @@ fun AppNavHost() {
         composable<AuthDest> {
             AuthRoute(
                 onLoggedIn = {
-                    nav.navigate(ModalityDest) {
+                    nav.navigate(HistoryDest) {
                         popUpTo(AuthDest) { inclusive = true }
                     }
                 },
@@ -67,20 +73,25 @@ fun AppNavHost() {
             )
         }
 
+
         composable<ModalityDest> {
             ModalityRoute(
-                onContinue = { nav.navigate(BudgetFormDest) },
-                onOpenHistory = { nav.navigate(HistoryDest) }
+                selected = selectedModality,
+                onSelectedChange = { selectedModality = it },
+                onContinue = {
+                    nav.navigate(BudgetFormDest)
+                },
+                onOpenHistory = {
+                    nav.navigate(HistoryDest)
+                }
             )
         }
 
         composable<BudgetFormDest> {
-            // 👇 IMPORTANTE: tu BudgetFormRoute ahora usa onSubmit (no onCalculate).
             BudgetFormRoute(
+                initialModality = selectedModality,
                 onSubmit = { data ->
-                    // Guardás el objeto complejo en el ViewModel como ya hacías
                     budgetVM.set(data)
-                    // Navegás con un ID primitivo (tu patrón original)
                     nav.navigate(SummaryDest(profileId = -1L))
                 }
             )
@@ -88,23 +99,34 @@ fun AppNavHost() {
 
         composable<SummaryDest> { backStackEntry ->
             val args = backStackEntry.toRoute<SummaryDest>()
-            val data = requireNotNull(budgetVM.pending.value) { "BudgetData no disponible" }
+            val data = budgetVM.pending.value
 
-            SummaryRoute(
-                data = data,
-                onSeeTips = { nav.navigate(TipsDest) },
-                onSaveToHistory = {
-                    // TODO: guarda en Room y obtén newId real
-                    val newId = 1L
-                    budgetVM.clear()
-                    nav.navigate(DetailDest(id = newId)) {
-                        popUpTo(BudgetFormDest) { inclusive = true }
+            if (data == null) {
+                LaunchedEffect(Unit) {
+                    // Intentar volver al formulario de presupuesto
+                    val popped = nav.popBackStack(BudgetFormDest, inclusive = false)
+                    if (!popped) {
+                        nav.navigate(ModalityDest) {
+                            popUpTo(HomeDest) { inclusive = false }
+                        }
                     }
-                },
-                onContinue = {
-                    nav.navigate(NewProfileDest(redirectToId = args.profileId))
                 }
-            )
+            } else {
+                SummaryRoute(
+                    data = data,
+                    onSeeTips = { nav.navigate(TipsDest) },
+                    onSaveToHistory = {
+                        historyVM.addFromBudget(data)
+                        budgetVM.clear()
+                        nav.navigate(HistoryDest) {
+                            popUpTo(HistoryDest) { inclusive = false }
+                        }
+                    },
+                    onContinue = {
+                        nav.navigate(NewProfileDest(redirectToId = args.profileId))
+                    }
+                )
+            }
         }
 
         composable<TipsDest> {
@@ -132,7 +154,10 @@ fun AppNavHost() {
                         popUpTo(HomeDest)
                     }
                 },
-                onBack = { nav.popBackStack() }
+                onBack = { nav.popBackStack() },
+                onChangeModality = {
+                    nav.navigate(ModalityDest)
+                }
             )
         }
 

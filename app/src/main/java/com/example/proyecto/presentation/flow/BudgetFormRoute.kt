@@ -4,13 +4,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.proyecto.domain.model.BudgetData
+import androidx.compose.runtime.LaunchedEffect
+
 
 @Composable
 fun BudgetFormRoute(
-    // Si usas Koin, podés cambiar a: viewModel: BudgetFormViewModel = org.koin.androidx.compose.koinViewModel(),
     viewModel: BudgetFormViewModel = viewModel(),
+    initialModality: String,
     onSubmit: (BudgetData) -> Unit
 ) {
+    androidx.compose.runtime.LaunchedEffect(initialModality) {
+        viewModel.onModalityChange(initialModality)
+    }
+
     val ui = viewModel.uiState.collectAsState().value
 
     BudgetFormScreen(

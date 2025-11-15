@@ -10,28 +10,37 @@ import androidx.compose.ui.tooling.preview.Preview
 data class HistoryRow(val mes: String, val ingreso: String, val ahorro: String, val estado: String)
 
 @Composable
-fun HistoryScreen(rows: List<HistoryRow>, onAddNew: ()->Unit) {
+fun HistoryScreen(rows: List<HistoryRow>, onAddNew: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("Mi historial de ahorro", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
-        TabRow(selectedTabIndex = 0) { // preview simple
-            Tab(selected = true, onClick = {}, text={ Text("Mensual") })
-            Tab(selected = false, onClick = {}, text={ Text("Semanal") })
-            Tab(selected = false, onClick = {}, text={ Text("Todos") })
+
+        if (rows.isEmpty()) {
+            Text("Aún no tienes registros de ahorro.", style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(16.dp))
+        } else {
+            // aquí dejas todo lo que ya tenías: tabs Mensual/Semanal/Todos, tabla, etc.
+            // HeaderRow()
+            // rows.forEach { RowItem(it) }
         }
-        Spacer(Modifier.height(12.dp))
-        ElevatedCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                HeaderRow()
-                Spacer(Modifier.height(6.dp))
-                rows.forEach { RowItem(it) }
-            }
+
+        Spacer(Modifier.weight(1f))
+        Button(
+            onClick = onAddNew,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Agregar nuevo registro") }
+
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = { /* comparar resultados */ },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = rows.size >= 2   // por ejemplo, solo si hay al menos 2 registros
+        ) {
+            Text("Comparar resultados")
         }
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = onAddNew, modifier = Modifier.fillMaxWidth()) { Text("Agregar nuevo registro") }
-        OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth()) { Text("Comparar resultados") }
     }
 }
+
 
 @Composable private fun HeaderRow() {
     Row(Modifier.fillMaxWidth()) {

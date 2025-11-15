@@ -13,6 +13,7 @@ import org.koin.androidx.compose.koinViewModel
 fun NewProfileScreen(
     onSaved: (Long) -> Unit,
     onBack: () -> Unit,
+    onChangeModality: () -> Unit,
     vm: NewProfileViewModel = koinViewModel()
 ) {
     Scaffold(
@@ -23,10 +24,31 @@ fun NewProfileScreen(
             )
         }
     ) { inner ->
-        Column(Modifier.padding(inner).padding(16.dp)) {
-            Text("Formulario (placeholder)", style = MaterialTheme.typography.titleMedium)
+        Column(
+            Modifier
+                .padding(inner)
+                .padding(16.dp)
+        ) {
+            Text(
+                "Formulario (placeholder)",
+                style = MaterialTheme.typography.titleMedium
+            )
+
             Spacer(Modifier.height(12.dp))
-            Button(onClick = { onSaved(999L) }) { Text("Guardar (demo)") }
+
+            Button(
+                onClick = onChangeModality,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large
+            ) {
+                Text("Nueva modalidad")
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Button(onClick = { onSaved(999L) }) {
+                Text("Guardar (demo)")
+            }
         }
     }
 }

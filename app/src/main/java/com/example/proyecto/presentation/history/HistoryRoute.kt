@@ -1,17 +1,13 @@
 package com.example.proyecto.presentation.history
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun HistoryRoute(onAddNew: ()->Unit) {
-    val rows = remember {
-        listOf(
-            HistoryRow("Marzo", "Q 7000", "Q 700", "Cumplido"),
-            HistoryRow("Febrero", "Q 7000", "Q 700", "Parcial"),
-            HistoryRow("Enero", "Q 7000", "Q 700", "No cumplido"),
-            HistoryRow("Diciembre", "Q 6800", "Q 800", "Cumplido"),
-        )
-    }
+fun HistoryRoute(onAddNew: () -> Unit) {
+    val vm: HistoryViewModel = koinViewModel()
+    val rows = vm.rows.collectAsState().value
+
     HistoryScreen(rows = rows, onAddNew = onAddNew)
 }

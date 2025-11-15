@@ -25,7 +25,8 @@ fun ModalityScreen(
     selected: String,
     onSelect: (String) -> Unit,
     onContinue: () -> Unit,
-    onOpenHistory: () -> Unit
+    onOpenHistory: () -> Unit,
+    showHistory: Boolean = true
 ) {
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("Selecciona tu modalidad", style = MaterialTheme.typography.headlineSmall)
@@ -36,9 +37,17 @@ fun ModalityScreen(
         Spacer(Modifier.height(8.dp))
         ModalityCard("IMPREVISTO","Reserva un fondo para imprevistos.", selected, onSelect)
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) { Text("Continuar") }
+        Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
+            Text("Continuar")
+        }
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onOpenHistory, modifier = Modifier.fillMaxWidth()) { Text("Ver historial") }
+
+        if (showHistory) {
+            OutlinedButton(onClick = onOpenHistory, modifier = Modifier.fillMaxWidth()) {
+                Text("Ver historial")
+            }
+        }
+
     }
 }
 
@@ -66,6 +75,12 @@ private fun ModalityCard(
 @Composable
 private fun ModalityPreview() {
     MaterialTheme {
-        ModalityScreen(selected = "MEDIO", onSelect = {}, onContinue = {}, onOpenHistory = {})
+        ModalityScreen(
+            selected = "MEDIO",
+            onSelect = {},
+            onContinue = {},
+            onOpenHistory = {},
+            showHistory = true
+        )
     }
 }

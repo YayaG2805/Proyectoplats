@@ -10,7 +10,7 @@ class PiggyApp : Application() {
         super.onCreate()
         startKoin {
             androidContext(this@PiggyApp)
-            modules(appModules) // ⬅️ usa tu lista appModules
+            modules(appModules)
         }
     }
 }
