@@ -51,31 +51,33 @@ private val vmModule = module {
     viewModel { DetailViewModel() }
     viewModel { BudgetFlowViewModel() }
 
-    // HistoryViewModel - SINGLETON para compartir datos
+    // ===== CRÍTICO: HistoryViewModel como SINGLETON =====
+    // Esto asegura que todas las pantallas compartan la misma instancia
+    // y los datos se actualicen automáticamente en toda la app
     single { HistoryViewModel(get(), get()) }
 
     // AuthViewModel
     viewModel { AuthViewModel(get(), get()) }
 
-    // DailyExpenseViewModel - Con MonthlyBudgetDao
+    // DailyExpenseViewModel
     viewModel { DailyExpenseViewModel(get(), get(), get()) }
 
-    // NewProfileViewModel - CORREGIDO: Ahora usa MonthlyBudgetDao y UserPreferences
+    // NewProfileViewModel
     viewModel { NewProfileViewModel(get(), get()) }
 
-    // ProfileViewModel - Con todos los DAOs necesarios
+    // ProfileViewModel - Necesita HistoryViewModel como singleton
     viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }
 
     // TipsBottomNavViewModel
     viewModel { TipsBottomNavViewModel(get()) }
 
-    // TipsViewModel - Para obtener gastos por categoría
+    // TipsViewModel
     viewModel { TipsViewModel(get(), get()) }
 
-    // BudgetStatusViewModel - Sincroniza gastos diarios con presupuesto mensual
+    // BudgetStatusViewModel
     viewModel { BudgetStatusViewModel(get(), get(), get()) }
 
-    // SavingsIndexViewModel - Para mostrar índice de ahorro con gráficas
+    // SavingsIndexViewModel
     viewModel { SavingsIndexViewModel(get(), get()) }
 }
 

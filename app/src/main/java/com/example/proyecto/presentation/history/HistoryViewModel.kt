@@ -20,45 +20,53 @@ class HistoryViewModel(
 
     private val currentMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
 
+    // ===== SOLUCIÓN: Escuchar cambios en el userId =====
+
     // Presupuesto del mes actual (el único editable)
-    private val _currentMonthBudget = MutableStateFlow<MonthlyBudgetEntity?>(null)
-    val currentMonthBudget: StateFlow<MonthlyBudgetEntity?> = _currentMonthBudget.asStateFlow()
-
-    // Historial de meses anteriores (read-only)
-    private val _previousMonths = MutableStateFlow<List<HistoryRow>>(emptyList())
-    val previousMonths: StateFlow<List<HistoryRow>> = _previousMonths.asStateFlow()
-
-    // Todas las filas (para compatibilidad con código existente)
-    private val _rows = MutableStateFlow<List<HistoryRow>>(emptyList())
-    val rows: StateFlow<List<HistoryRow>> = _rows.asStateFlow()
-
-    init {
-        loadHistoryFromDatabase()
-    }
-
-    /**
-     * Carga el historial desde la base de datos.
-     * Separa el mes actual de los meses anteriores.
-     * CORREGIDO: Usa StateFlow correctamente sin llamar a clear()
-     */
-    private fun loadHistoryFromDatabase() {
-        viewModelScope.launch {
-            userPreferences.userId
-                .filterNotNull() // Solo procesa cuando hay userId
-                .flatMapLatest { userId ->
-                    monthlyBudgetDao.getAllByUser(userId)
-                }
-                .collect { budgets ->
-                    // Separar mes actual de históricos
-                    val current = budgets.firstOrNull { it.month == currentMonth }
-                    val previous = budgets.filter { it.month != currentMonth }
-
-                    _currentMonthBudget.value = current
-                    _previousMonths.value = previous.map { it.toHistoryRow() }
-                    _rows.value = budgets.map { it.toHistoryRow() }
+    val currentMonthBudget: StateFlow<MonthlyBudgetEntity?> = userPreferences.userId
+        .filterNotNull() // Solo procesar cuando hay usuario
+        .flatMapLatest { userId ->
+            monthlyBudgetDao.getAllByUser(userId)
+                .map { budgets ->
+                    budgets.firstOrNull { it.month == currentMonth }
                 }
         }
-    }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    // Historial de meses anteriores (read-only)
+    val previousMonths: StateFlow<List<HistoryRow>> = userPreferences.userId
+        .filterNotNull()
+        .flatMapLatest { userId ->
+            monthlyBudgetDao.getAllByUser(userId)
+                .map { budgets ->
+                    budgets.filter { it.month != currentMonth }
+                        .map { it.toHistoryRow() }
+                }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    // Todas las filas (para compatibilidad con código existente)
+    val rows: StateFlow<List<HistoryRow>> = userPreferences.userId
+        .filterNotNull()
+        .flatMapLatest { userId ->
+            monthlyBudgetDao.getAllByUser(userId)
+                .map { budgets ->
+                    budgets.map { it.toHistoryRow() }
+                }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     /**
      * Crear o actualizar el presupuesto del mes actual.
@@ -66,10 +74,10 @@ class HistoryViewModel(
     fun addFromBudget(data: BudgetData) {
         viewModelScope.launch {
             userPreferences.userId.first()?.let { userId ->
-                val existing = _currentMonthBudget.value
+                val existing = monthlyBudgetDao.getByUserAndMonth(userId, currentMonth)
 
                 if (existing != null) {
-                    // ACTUALIZAR existente - Usar update()
+                    // ACTUALIZAR existente
                     monthlyBudgetDao.update(
                         existing.copy(
                             income = data.income,
@@ -81,7 +89,7 @@ class HistoryViewModel(
                         )
                     )
                 } else {
-                    // Crear nuevo - Usar insert()
+                    // Crear nuevo
                     monthlyBudgetDao.insert(
                         MonthlyBudgetEntity(
                             userId = userId,
@@ -104,11 +112,13 @@ class HistoryViewModel(
      */
     fun addExtraIncome(amount: Double) {
         viewModelScope.launch {
-            val current = _currentMonthBudget.value
-            if (current != null) {
-                monthlyBudgetDao.update(
-                    current.copy(income = current.income + amount)
-                )
+            userPreferences.userId.first()?.let { userId ->
+                val current = monthlyBudgetDao.getByUserAndMonth(userId, currentMonth)
+                if (current != null) {
+                    monthlyBudgetDao.update(
+                        current.copy(income = current.income + amount)
+                    )
+                }
             }
         }
     }
@@ -118,11 +128,13 @@ class HistoryViewModel(
      */
     fun updateModality(newModality: String) {
         viewModelScope.launch {
-            val current = _currentMonthBudget.value
-            if (current != null) {
-                monthlyBudgetDao.update(
-                    current.copy(modality = newModality)
-                )
+            userPreferences.userId.first()?.let { userId ->
+                val current = monthlyBudgetDao.getByUserAndMonth(userId, currentMonth)
+                if (current != null) {
+                    monthlyBudgetDao.update(
+                        current.copy(modality = newModality)
+                    )
+                }
             }
         }
     }
@@ -141,12 +153,9 @@ class HistoryViewModel(
 
     /**
      * Limpiar historial solo para logout.
-     * CORREGIDO: Ya no se llama al cambiar contraseña.
      */
     fun clear() {
-        _rows.value = emptyList()
-        _currentMonthBudget.value = null
-        _previousMonths.value = emptyList()
+        // Los StateFlows se actualizarán automáticamente cuando cambie el userId
     }
 
     /**
