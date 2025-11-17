@@ -17,14 +17,13 @@ import com.example.proyecto.domain.model.BudgetData
  *
  * Permite al usuario:
  * - Ingresar datos de presupuesto completos
- * - Cambiar modalidad de ahorro
+ * - Cambiar modalidad de ahorro con dropdown
  * - Guardar en el historial
  */
 @Composable
 fun NewProfileScreen(
     onSaved: (Long) -> Unit,
     onBack: () -> Unit,
-    onChangeModality: (String) -> Unit,
     vm: NewProfileViewModel = koinViewModel()
 ) {
     val uiState by vm.uiState.collectAsState()
@@ -53,28 +52,77 @@ fun NewProfileScreen(
                 style = MaterialTheme.typography.titleMedium
             )
 
-            // Selector de modalidad
-            OutlinedCard(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { onChangeModality(uiState.modality) }
+            // Selector de modalidad con dropdown
+            var expandedModality by remember { mutableStateOf(false) }
+
+            ExposedDropdownMenuBox(
+                expanded = expandedModality,
+                onExpandedChange = { expandedModality = it },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
+                OutlinedTextField(
+                    value = uiState.modality,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Modalidad de ahorro") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedModality) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .menuAnchor(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    )
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expandedModality,
+                    onDismissRequest = { expandedModality = false }
                 ) {
-                    Column {
-                        Text("Modalidad actual", style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            uiState.modality,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    TextButton(onClick = { onChangeModality(uiState.modality) }) {
-                        Text("Cambiar")
-                    }
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text("EXTREMO", style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    "Maximiza tu ahorro reduciendo gastos al mínimo",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        },
+                        onClick = {
+                            vm.setModality("EXTREMO")
+                            expandedModality = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text("MEDIO", style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    "Un balance entre ahorro y gastos personales",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        },
+                        onClick = {
+                            vm.setModality("MEDIO")
+                            expandedModality = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text("IMPREVISTO", style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    "Reserva un fondo para imprevistos",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        },
+                        onClick = {
+                            vm.setModality("IMPREVISTO")
+                            expandedModality = false
+                        }
+                    )
                 }
             }
 

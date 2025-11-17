@@ -6,10 +6,10 @@ import com.example.proyecto.data.local.UserPreferences
 import com.example.proyecto.data.repository.UserRepository
 import com.example.proyecto.data.repository.UserRepositoryImpl
 import com.example.proyecto.presentation.auth.AuthViewModel
+import com.example.proyecto.presentation.budgetstatus.BudgetStatusViewModel
 import com.example.proyecto.presentation.dailyexpense.DailyExpenseViewModel
 import com.example.proyecto.presentation.detail.DetailViewModel
 import com.example.proyecto.presentation.flow.BudgetFlowViewModel
-import com.example.proyecto.presentation.flow.BudgetFormViewModel
 import com.example.proyecto.presentation.flow.TipsBottomNavViewModel
 import com.example.proyecto.presentation.history.HistoryViewModel
 import com.example.proyecto.presentation.home.HomeViewModel
@@ -17,7 +17,6 @@ import com.example.proyecto.presentation.newprofile.NewProfileViewModel
 import com.example.proyecto.presentation.profile.ProfileViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
-import org.koin.androidx.viewmodel.dsl.viewModelOf
 import org.koin.dsl.module
 
 private val dataModule = module {
@@ -49,7 +48,6 @@ private val vmModule = module {
     viewModel { HomeViewModel() }
     viewModel { DetailViewModel() }
     viewModel { BudgetFlowViewModel() }
-    viewModelOf(::BudgetFormViewModel)
 
     // HistoryViewModel - SINGLETON para compartir datos
     single { HistoryViewModel(get(), get()) }
@@ -68,6 +66,9 @@ private val vmModule = module {
 
     // TipsBottomNavViewModel
     viewModel { TipsBottomNavViewModel(get()) }
+
+    // BudgetStatusViewModel - NUEVO: Sincroniza gastos diarios con presupuesto mensual
+    viewModel { BudgetStatusViewModel(get(), get(), get()) }
 }
 
 val appModules = listOf(

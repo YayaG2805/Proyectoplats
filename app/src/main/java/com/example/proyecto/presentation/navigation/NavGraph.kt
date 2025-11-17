@@ -15,13 +15,10 @@ import org.koin.androidx.compose.koinViewModel
 import com.example.proyecto.presentation.auth.AuthRoute
 import com.example.proyecto.presentation.auth.SplashScreen
 import com.example.proyecto.presentation.dailyexpense.DailyExpenseRoute
-import com.example.proyecto.presentation.flow.BudgetFormRoute
 import com.example.proyecto.presentation.flow.BudgetFlowViewModel
-import com.example.proyecto.presentation.flow.SummaryRoute
 import com.example.proyecto.presentation.flow.TipsRoute
 import com.example.proyecto.presentation.flow.TipsBottomNavRoute
 import com.example.proyecto.presentation.history.HistoryRoute
-import com.example.proyecto.presentation.flow.ModalityRoute
 import com.example.proyecto.presentation.home.HomeScreen
 import com.example.proyecto.presentation.newprofile.NewProfileScreen
 import com.example.proyecto.presentation.detail.DetailScreen
@@ -33,9 +30,6 @@ import com.example.proyecto.presentation.newprofile.NewProfileViewModel
 
 @Serializable object SplashDest
 @Serializable object AuthDest
-@Serializable object ModalityDest
-@Serializable object BudgetFormDest
-@Serializable data class SummaryDest(val profileId: Long)
 @Serializable object TipsDest
 @Serializable object HistoryDest
 @Serializable object DailyExpenseDest
@@ -48,16 +42,15 @@ import com.example.proyecto.presentation.newprofile.NewProfileViewModel
  * NavHost principal de PiggyMobile.
  *
  * CAMBIOS PRINCIPALES:
- * - Registro ahora va directo al historial (no a modalidad)
- * - Modalidad solo se accede desde NewProfile
- * - Tips ahora disponible en Bottom Nav si hay presupuestos
+ * - Eliminada navegación a ModalityScreen desde NewProfile (ahora es dropdown local)
+ * - Registro va directo al historial
+ * - Tips disponible en Bottom Nav si hay presupuestos
  */
 @Composable
 fun AppNavHost(startWithDailyExpense: Boolean = false) {
     val nav = rememberNavController()
     val budgetVM: BudgetFlowViewModel = koinViewModel()
     val historyVM: HistoryViewModel = koinViewModel()
-    var selectedModality by rememberSaveable { mutableStateOf("MEDIO") }
 
     // Obtener la ruta actual para el Bottom Bar
     val navBackStackEntry by nav.currentBackStackEntryAsState()
@@ -123,7 +116,6 @@ fun AppNavHost(startWithDailyExpense: Boolean = false) {
                             popUpTo(AuthDest) { inclusive = true }
                         }
                     },
-                    // CAMBIO: Registro ahora va directo al historial
                     onRegistered = {
                         nav.navigate(HistoryDest) {
                             popUpTo(AuthDest) { inclusive = true }
@@ -132,74 +124,9 @@ fun AppNavHost(startWithDailyExpense: Boolean = false) {
                 )
             }
 
-            // Modalidad solo se accede desde NewProfile ahora
-            composable<ModalityDest> {
-                ModalityRoute(
-                    selected = selectedModality,
-                    onSelectedChange = { selectedModality = it },
-                    onContinue = {
-                        nav.navigate(BudgetFormDest)
-                    },
-                    onOpenHistory = {
-                        nav.navigate(HistoryDest)
-                    }
-                )
-            }
-
-            composable<BudgetFormDest> {
-                BudgetFormRoute(
-                    initialModality = selectedModality,
-                    onSubmit = { data ->
-                        budgetVM.set(data)
-                        nav.navigate(SummaryDest(profileId = -1L))
-                    }
-                )
-            }
-
-            composable<SummaryDest> { backStackEntry ->
-                val args = backStackEntry.toRoute<SummaryDest>()
-                val data = budgetVM.pending.value
-
-                if (data == null) {
-                    LaunchedEffect(Unit) {
-                        val popped = nav.popBackStack(BudgetFormDest, inclusive = false)
-                        if (!popped) {
-                            nav.navigate(HistoryDest) {
-                                popUpTo(HomeDest) { inclusive = false }
-                            }
-                        }
-                    }
-                } else {
-                    SummaryRoute(
-                        data = data,
-                        onSeeTips = { nav.navigate(TipsDest) },
-                        onSaveToHistory = {
-                            historyVM.addFromBudget(data)
-                            budgetVM.clear()
-                            nav.navigate(HistoryDest) {
-                                popUpTo(HistoryDest) { inclusive = false }
-                            }
-                        },
-                        onContinue = {
-                            historyVM.addFromBudget(data)
-                            budgetVM.clear()
-                            nav.navigate(HistoryDest) {
-                                popUpTo(HistoryDest) { inclusive = false }
-                            }
-                        }
-                    )
-                }
-            }
-
-            // Tips en el flujo (temporal desde summary)
+            // Tips - muestra del último presupuesto guardado
             composable<TipsDest> {
-                val data = budgetVM.pending.value
-                if (data != null) {
-                    TipsRoute(data = data, onBack = { nav.popBackStack() })
-                } else {
-                    // Si no hay data temporal, mostrar tips del último presupuesto
-                    TipsBottomNavRoute()
-                }
+                TipsBottomNavRoute()
             }
 
             // ===== PANTALLAS DEL BOTTOM NAV =====
@@ -248,21 +175,13 @@ fun AppNavHost(startWithDailyExpense: Boolean = false) {
                 val args = backStackEntry.toRoute<NewProfileDest>()
                 val vm: NewProfileViewModel = koinViewModel()
 
-                LaunchedEffect(selectedModality) {
-                    vm.setModality(selectedModality)
-                }
-
                 NewProfileScreen(
                     onSaved = { newId ->
                         nav.navigate(HistoryDest) {
                             popUpTo(HistoryDest) { inclusive = false }
                         }
                     },
-                    onBack = { nav.popBackStack() },
-                    onChangeModality = { currentModality ->
-                        selectedModality = currentModality
-                        nav.navigate(ModalityDest)
-                    }
+                    onBack = { nav.popBackStack() }
                 )
             }
 
