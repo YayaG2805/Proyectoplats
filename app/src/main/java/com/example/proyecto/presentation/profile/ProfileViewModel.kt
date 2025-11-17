@@ -157,9 +157,17 @@ class ProfileViewModel(
 
     fun logout() {
         viewModelScope.launch {
-            userPreferences.clearUser()
+            // ===== FIX: Limpieza COMPLETA de sesión =====
+            // 1. Limpiar UserSession (singleton)
             UserSession.logout()
+
+            // 2. Limpiar UserPreferences (DataStore)
+            userPreferences.clearUser()
+
+            // 3. Limpiar HistoryViewModel (ya no es singleton, pero por seguridad)
             historyViewModel.clear()
+
+            // 4. Resetear UI a estado inicial
             _uiState.value = ProfileUiState()
         }
     }

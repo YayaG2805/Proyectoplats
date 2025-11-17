@@ -51,12 +51,11 @@ private val vmModule = module {
     viewModel { DetailViewModel() }
     viewModel { BudgetFlowViewModel() }
 
-    // ===== CRÍTICO: HistoryViewModel como SINGLETON =====
-    // Esto asegura que todas las pantallas compartan la misma instancia
-    // y los datos se actualicen automáticamente en toda la app
-    single { HistoryViewModel(get(), get()) }
+    // ===== FIX: HistoryViewModel ahora es viewModel, NO singleton =====
+    // Esto permite que se recree correctamente al cambiar de usuario
+    viewModel { HistoryViewModel(get(), get()) }
 
-    // AuthViewModel
+    // AuthViewModel - IMPORTANTE: limpia UserSession correctamente
     viewModel { AuthViewModel(get(), get()) }
 
     // DailyExpenseViewModel
@@ -65,7 +64,7 @@ private val vmModule = module {
     // NewProfileViewModel
     viewModel { NewProfileViewModel(get(), get()) }
 
-    // ProfileViewModel - Necesita HistoryViewModel como singleton
+    // ProfileViewModel - Ahora obtiene HistoryViewModel de forma reactiva
     viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }
 
     // TipsBottomNavViewModel

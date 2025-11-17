@@ -20,11 +20,15 @@ class HistoryViewModel(
 
     private val currentMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
 
-    // ===== SOLUCIÓN: Escuchar cambios en el userId =====
+    // ===== FIX: Agregar trigger para forzar actualización =====
+    private val _refreshTrigger = MutableStateFlow(0L)
 
     // Presupuesto del mes actual (el único editable)
-    val currentMonthBudget: StateFlow<MonthlyBudgetEntity?> = userPreferences.userId
-        .filterNotNull() // Solo procesar cuando hay usuario
+    val currentMonthBudget: StateFlow<MonthlyBudgetEntity?> = combine(
+        userPreferences.userId,
+        _refreshTrigger
+    ) { userId, _ -> userId }
+        .filterNotNull()
         .flatMapLatest { userId ->
             monthlyBudgetDao.getAllByUser(userId)
                 .map { budgets ->
@@ -38,7 +42,10 @@ class HistoryViewModel(
         )
 
     // Historial de meses anteriores (read-only)
-    val previousMonths: StateFlow<List<HistoryRow>> = userPreferences.userId
+    val previousMonths: StateFlow<List<HistoryRow>> = combine(
+        userPreferences.userId,
+        _refreshTrigger
+    ) { userId, _ -> userId }
         .filterNotNull()
         .flatMapLatest { userId ->
             monthlyBudgetDao.getAllByUser(userId)
@@ -54,7 +61,10 @@ class HistoryViewModel(
         )
 
     // Todas las filas (para compatibilidad con código existente)
-    val rows: StateFlow<List<HistoryRow>> = userPreferences.userId
+    val rows: StateFlow<List<HistoryRow>> = combine(
+        userPreferences.userId,
+        _refreshTrigger
+    ) { userId, _ -> userId }
         .filterNotNull()
         .flatMapLatest { userId ->
             monthlyBudgetDao.getAllByUser(userId)
@@ -103,6 +113,9 @@ class HistoryViewModel(
                         )
                     )
                 }
+
+                // ===== FIX: Forzar actualización de flows =====
+                _refreshTrigger.value = System.currentTimeMillis()
             }
         }
     }
@@ -118,6 +131,8 @@ class HistoryViewModel(
                     monthlyBudgetDao.update(
                         current.copy(income = current.income + amount)
                     )
+                    // ===== FIX: Forzar actualización =====
+                    _refreshTrigger.value = System.currentTimeMillis()
                 }
             }
         }
@@ -134,6 +149,8 @@ class HistoryViewModel(
                     monthlyBudgetDao.update(
                         current.copy(modality = newModality)
                     )
+                    // ===== FIX: Forzar actualización =====
+                    _refreshTrigger.value = System.currentTimeMillis()
                 }
             }
         }
@@ -147,15 +164,18 @@ class HistoryViewModel(
             val budget = monthlyBudgetDao.getById(budgetId)
             if (budget != null && budget.month != currentMonth) {
                 monthlyBudgetDao.delete(budget)
+                // ===== FIX: Forzar actualización =====
+                _refreshTrigger.value = System.currentTimeMillis()
             }
         }
     }
 
     /**
-     * Limpiar historial solo para logout.
+     * Limpiar historial al cerrar sesión.
+     * ===== FIX: Ahora realmente resetea los flows =====
      */
     fun clear() {
-        // Los StateFlows se actualizarán automáticamente cuando cambie el userId
+        _refreshTrigger.value = System.currentTimeMillis()
     }
 
     /**

@@ -73,6 +73,11 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _ui.update { it.copy(loading = true, error = null) }
+
+            // ===== FIX: Limpiar sesión anterior ANTES de login =====
+            UserSession.logout()
+            userPreferences.clearUser()
+
             val result = userRepository.login(current.loginEmail, current.loginPassword)
             result.fold(
                 onSuccess = { user ->
@@ -106,6 +111,11 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _ui.update { it.copy(loading = true, error = null) }
+
+            // ===== FIX: Limpiar sesión anterior ANTES de registro =====
+            UserSession.logout()
+            userPreferences.clearUser()
+
             val result = userRepository.register(
                 nombre = current.registerNombre,
                 apellido = current.registerApellido,
@@ -119,7 +129,6 @@ class AuthViewModel(
                     if (user != null) {
                         UserSession.login(user)
                     }
-                    // CAMBIO: registerSuccess ahora va directo al historial
                     _ui.update { it.copy(loading = false, registerSuccess = true) }
                 },
                 onFailure = { e ->
