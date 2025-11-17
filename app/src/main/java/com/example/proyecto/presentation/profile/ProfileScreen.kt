@@ -17,7 +17,7 @@ import kotlin.math.roundToInt
 
 /**
  * Pantalla de perfil del usuario con datos completos y sincronizados.
- * CORREGIDO: Muestra gastos fijos y gastos diarios por separado.
+ * ACTUALIZADO: Sin notificaciones
  */
 @Composable
 fun ProfileScreen(
@@ -79,48 +79,7 @@ fun ProfileScreen(
             fontWeight = FontWeight.SemiBold
         )
 
-        // Ahorro total destacado
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    Icons.Default.Savings,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.secondary
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "Ahorro Planificado",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                Text(
-                    "Q${uiState.totalSavingsPlanned}",
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                if (uiState.savingPercentage > 0) {
-                    Text(
-                        "${uiState.savingPercentage.roundToInt()}% de tus ingresos",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
-        }
-
-        // Primera fila: Meses y Registros Diarios
+        // Primera fila: Meses y Registros
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -160,7 +119,7 @@ fun ProfileScreen(
             )
         }
 
-        // Tercera fila: Gastos Diarios (NUEVO - separado de gastos fijos)
+        // Tercera fila: Gastos Diarios
         StatCard(
             modifier = Modifier.fillMaxWidth(),
             title = "Gastos Variables",
@@ -168,29 +127,6 @@ fun ProfileScreen(
             value = "Q${uiState.totalDailyExpensesAmount}",
             icon = Icons.Default.ShoppingCart,
             highlighted = true
-        )
-
-        // Configuración
-        Text(
-            "Configuración",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        SettingItem(
-            icon = Icons.Default.Notifications,
-            title = "Notificaciones diarias",
-            subtitle = "Recordatorio a las 8:00 PM",
-            checked = uiState.notificationsEnabled,
-            onCheckedChange = vm::toggleNotifications
-        )
-
-        SettingItem(
-            icon = Icons.Default.Warning,
-            title = "Alertas de presupuesto",
-            subtitle = "Aviso cuando excedes el límite",
-            checked = uiState.budgetAlertsEnabled,
-            onCheckedChange = vm::toggleBudgetAlerts
         )
 
         Divider()
@@ -325,113 +261,6 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun ChangePasswordDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
-) {
-    var currentPassword by remember { mutableStateOf("") }
-    var newPassword by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Lock, null) },
-        title = { Text("Cambiar Contraseña") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (errorMessage != null) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Text(
-                            errorMessage!!,
-                            modifier = Modifier.padding(12.dp),
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-
-                OutlinedTextField(
-                    value = currentPassword,
-                    onValueChange = {
-                        currentPassword = it
-                        errorMessage = null
-                    },
-                    label = { Text("Contraseña actual") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = newPassword,
-                    onValueChange = {
-                        newPassword = it
-                        errorMessage = null
-                    },
-                    label = { Text("Nueva contraseña") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = confirmPassword,
-                    onValueChange = {
-                        confirmPassword = it
-                        errorMessage = null
-                    },
-                    label = { Text("Confirmar nueva contraseña") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                Text(
-                    "La contraseña debe tener al menos 6 caracteres",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    when {
-                        currentPassword.isBlank() || newPassword.isBlank() || confirmPassword.isBlank() -> {
-                            errorMessage = "Todos los campos son obligatorios"
-                        }
-                        newPassword.length < 6 -> {
-                            errorMessage = "La nueva contraseña debe tener al menos 6 caracteres"
-                        }
-                        newPassword != confirmPassword -> {
-                            errorMessage = "Las contraseñas no coinciden"
-                        }
-                        currentPassword == newPassword -> {
-                            errorMessage = "La nueva contraseña debe ser diferente a la actual"
-                        }
-                        else -> {
-                            onConfirm(currentPassword, newPassword)
-                        }
-                    }
-                }
-            ) {
-                Text("Cambiar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
-    )
-}
-
-@Composable
 private fun StatCard(
     modifier: Modifier = Modifier,
     title: String,
@@ -485,37 +314,84 @@ private fun StatCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+private fun ChangePasswordDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, String) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, null)
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Cambiar contraseña") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = currentPassword,
+                    onValueChange = { currentPassword = it },
+                    label = { Text("Contraseña actual") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
+
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it },
+                    label = { Text("Nueva contraseña") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = { Text("Confirmar nueva contraseña") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange
-            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    when {
+                        currentPassword.isEmpty() || newPassword.isEmpty() || confirmPassword.isEmpty() -> {
+                            errorMessage = "Todos los campos son obligatorios"
+                        }
+                        newPassword != confirmPassword -> {
+                            errorMessage = "Las contraseñas no coinciden"
+                        }
+                        newPassword.length < 6 -> {
+                            errorMessage = "La contraseña debe tener al menos 6 caracteres"
+                        }
+                        else -> {
+                            onConfirm(currentPassword, newPassword)
+                        }
+                    }
+                }
+            ) {
+                Text("Cambiar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
         }
-    }
+    )
 }
