@@ -14,7 +14,7 @@ import kotlin.math.roundToInt
 @Composable
 fun TipsScreen(
     data: BudgetData,
-    onBackToSummary: () -> Unit,
+    onBackToSummary: (() -> Unit)? = null, // Hacer opcional
     vm: TipsViewModel = koinViewModel()
 ) {
     // Obtener gastos por categoría desde ViewModel
@@ -42,9 +42,12 @@ fun TipsScreen(
             TipCard(tip)
         }
 
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onBackToSummary, modifier = Modifier.fillMaxWidth()) {
-            Text("Volver al resumen")
+        // Solo mostrar botón de volver si hay callback
+        if (onBackToSummary != null) {
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onBackToSummary, modifier = Modifier.fillMaxWidth()) {
+                Text("Volver al resumen")
+            }
         }
     }
 }
@@ -284,7 +287,9 @@ fun generatePersonalizedTips(
         ))
     }
 
-    // 4. Tips generales de ahorro
+    // 4. TIPS GENERALES ADICIONALES (para llegar a 10+)
+
+    // Tip de ahorro bajo
     if (balance < data.income * 0.10) {
         tips.add(PersonalizedTip(
             "ALERTA - Ahorro bajo",
@@ -294,21 +299,100 @@ fun generatePersonalizedTips(
         ))
     }
 
-    if (tips.size < 3) {
-        tips.add(PersonalizedTip(
-            "Consejo general",
-            "Regla de oro: antes de comprar algo, espera 24 horas. Si después de un día todavía lo quieres, cómpralo. " +
-                    "Esto elimina compras impulsivas.",
-            priority = TipPriority.LOW
-        ))
-    }
+    // Tip de compras impulsivas
+    tips.add(PersonalizedTip(
+        "Evita compras impulsivas",
+        "Regla de oro: antes de comprar algo, espera 24 horas. Si después de un día todavía lo quieres, cómpralo. " +
+                "Esto elimina el 70% de las compras impulsivas.",
+        potentialSaving = totalDailyExpenses * 0.15,
+        priority = TipPriority.LOW
+    ))
 
-    // Ordenar por prioridad
+    // Tip de lista de compras
+    tips.add(PersonalizedTip(
+        "Lista de compras",
+        "Haz SIEMPRE una lista antes de ir al súper. Comprar sin lista aumenta el gasto en 30-50%. " +
+                "No vayas con hambre - gastas hasta 20% más.",
+        potentialSaving = (data.other * 0.30),
+        priority = TipPriority.MEDIUM
+    ))
+
+    // Tip de gastos hormiga
+    tips.add(PersonalizedTip(
+        "Identifica gastos hormiga",
+        "Café diario (Q15) = Q450/mes. Snacks (Q10/día) = Q300/mes. Uber cortos (Q25 x 3/semana) = Q300/mes. " +
+                "Total: Q1,050 que podrías ahorrar. ¿Qué gastos pequeños tienes TÚ?",
+        potentialSaving = 1050.0,
+        priority = TipPriority.MEDIUM
+    ))
+
+    // Tip de agua y luz
+    tips.add(PersonalizedTip(
+        "Ahorra en servicios",
+        "Apaga luces que no uses, desconecta aparatos, usa ventilador en vez de AC cuando sea posible. " +
+                "Ahorro promedio: Q50-100/mes en electricidad.",
+        potentialSaving = 75.0,
+        priority = TipPriority.LOW
+    ))
+
+    // Tip de comida casera
+    tips.add(PersonalizedTip(
+        "Cocina en casa",
+        "Comer fuera cuesta 3-4 veces más que cocinar. Una comida en restaurante (Q50) vs casera (Q15). " +
+                "Cocinar 5 días más al mes ahorra Q700-900.",
+        potentialSaving = 800.0,
+        priority = TipPriority.MEDIUM
+    ))
+
+    // Tip de suscripciones
+    tips.add(PersonalizedTip(
+        "Revisa suscripciones",
+        "Netflix, Spotify, gym, apps... Cancela las que NO usaste en el último mes. " +
+                "¿Realmente necesitas 3 servicios de streaming? Comparte con familia.",
+        potentialSaving = 150.0,
+        priority = TipPriority.MEDIUM
+    ))
+
+    // Tip de apps de descuentos
+    tips.add(PersonalizedTip(
+        "Usa apps de descuentos",
+        "Apps como Kueski Pay, Yape, o cupones digitales te ahorran 5-15% en compras. " +
+                "Paga servicios en fechas de promoción. Pequeños ahorros se acumulan.",
+        potentialSaving = data.other * 0.10,
+        priority = TipPriority.LOW
+    ))
+
+    // Tip del desafío de la semana
+    tips.add(PersonalizedTip(
+        "Desafío: semana sin gastos",
+        "Reto: 7 días gastando SOLO en lo esencial. Nada de antojos, salidas, ni compras 'solo porque sí'. " +
+                "Verás que puedes vivir con menos. Ahorro promedio: Q200-400.",
+        potentialSaving = 300.0,
+        priority = TipPriority.LOW
+    ))
+
+    // Tip de objetivos visuales
+    tips.add(PersonalizedTip(
+        "Visualiza tu meta",
+        "Pon una foto de tu meta de ahorro (viaje, carro, casa) como fondo de pantalla. " +
+                "Antes de gastar, pregúntate: '¿Esto me acerca a mi meta?' Motiva más que solo números.",
+        priority = TipPriority.LOW
+    ))
+
+    // Tip de método del sobre
+    tips.add(PersonalizedTip(
+        "Método del sobre",
+        "Retira efectivo a inicio de mes y divídelo en sobres por categoría (comida, diversión, etc). " +
+                "Cuando se acabe un sobre, ya no gastas en esa categoría. Control total.",
+        priority = TipPriority.LOW
+    ))
+
+    // Ordenar por prioridad y potencial de ahorro
     return tips.sortedWith(compareBy<PersonalizedTip> {
         when(it.priority) {
             TipPriority.HIGH -> 0
             TipPriority.MEDIUM -> 1
             TipPriority.LOW -> 2
         }
-    }.thenByDescending { it.potentialSaving })
+    }.thenByDescending { it.potentialSaving }).take(15) // Máximo 15 tips para no saturar
 }

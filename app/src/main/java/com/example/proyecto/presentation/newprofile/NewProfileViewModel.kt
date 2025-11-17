@@ -2,13 +2,18 @@ package com.example.proyecto.presentation.newprofile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.proyecto.data.local.MonthlyBudgetDao
+import com.example.proyecto.data.local.MonthlyBudgetEntity
+import com.example.proyecto.data.local.UserPreferences
 import com.example.proyecto.domain.model.BudgetData
-import com.example.proyecto.presentation.history.HistoryViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 data class NewProfileUiState(
     val income: String = "",
@@ -23,7 +28,8 @@ data class NewProfileUiState(
 )
 
 class NewProfileViewModel(
-    private val historyViewModel: HistoryViewModel
+    private val monthlyBudgetDao: MonthlyBudgetDao,
+    private val userPreferences: UserPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NewProfileUiState())
@@ -54,7 +60,8 @@ class NewProfileViewModel(
     }
 
     /**
-     * Valida y guarda el presupuesto en el historial.
+     * Valida y guarda el presupuesto en la base de datos.
+     * CORREGIDO: Ahora guarda directamente en la BD sin depender de HistoryViewModel.
      */
     fun save(onSaved: (Long) -> Unit) {
         val state = _uiState.value
@@ -71,32 +78,62 @@ class NewProfileViewModel(
             return
         }
 
-        // Construir BudgetData
-        val budgetData = BudgetData(
-            income = income,
-            rent = state.rent.toDoubleOrNull() ?: 0.0,
-            utilities = state.utilities.toDoubleOrNull() ?: 0.0,
-            transport = state.transport.toDoubleOrNull() ?: 0.0,
-            other = state.other.toDoubleOrNull() ?: 0.0,
-            modality = state.modality
-        )
-
-        // Guardar en el historial
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, error = null) }
 
             try {
-                // Agregar al historial
-                historyViewModel.addFromBudget(budgetData)
+                // Obtener userId actual
+                val userId = userPreferences.userId.first()
+                if (userId == null) {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            error = "No hay sesión activa. Por favor, inicia sesión."
+                        )
+                    }
+                    return@launch
+                }
 
-                // Generar ID único (en producción sería de la BD)
-                val newId = System.currentTimeMillis()
+                // Mes actual
+                val currentMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
+
+                // Verificar si ya existe un presupuesto para este mes
+                val existing = monthlyBudgetDao.getByUserAndMonth(userId, currentMonth)
+
+                if (existing != null) {
+                    // ACTUALIZAR presupuesto existente
+                    monthlyBudgetDao.update(
+                        existing.copy(
+                            income = income,
+                            rent = state.rent.toDoubleOrNull() ?: 0.0,
+                            utilities = state.utilities.toDoubleOrNull() ?: 0.0,
+                            transport = state.transport.toDoubleOrNull() ?: 0.0,
+                            other = state.other.toDoubleOrNull() ?: 0.0,
+                            modality = state.modality
+                        )
+                    )
+                } else {
+                    // CREAR nuevo presupuesto
+                    monthlyBudgetDao.insert(
+                        MonthlyBudgetEntity(
+                            userId = userId,
+                            month = currentMonth,
+                            income = income,
+                            rent = state.rent.toDoubleOrNull() ?: 0.0,
+                            utilities = state.utilities.toDoubleOrNull() ?: 0.0,
+                            transport = state.transport.toDoubleOrNull() ?: 0.0,
+                            other = state.other.toDoubleOrNull() ?: 0.0,
+                            modality = state.modality
+                        )
+                    )
+                }
 
                 // Callback de éxito
-                onSaved(newId)
+                onSaved(System.currentTimeMillis())
 
                 // Limpiar formulario
                 _uiState.update { NewProfileUiState(modality = state.modality) }
+
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(

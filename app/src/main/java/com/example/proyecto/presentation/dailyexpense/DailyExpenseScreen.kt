@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,12 +26,17 @@ import java.util.Locale
 fun DailyExpenseScreen(
     expenses: List<DailyExpense>,
     totalToday: Double,
+    suggestedDailyLimit: Double = 0.0, // Nuevo parámetro
     onAddExpense: (category: ExpenseCategory, amount: Double, description: String) -> Unit,
     onDeleteExpense: (Long) -> Unit,
     onBack: () -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) }
+
+    // Calcular si está cerca o sobre el límite
+    val isNearLimit = suggestedDailyLimit > 0 && totalToday >= suggestedDailyLimit * 0.80
+    val isOverLimit = suggestedDailyLimit > 0 && totalToday > suggestedDailyLimit
 
     Scaffold(
         topBar = {
@@ -53,27 +59,135 @@ fun DailyExpenseScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // Resumen del día
+            // Resumen del día con alertas
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = when {
+                        isOverLimit -> MaterialTheme.colorScheme.errorContainer
+                        isNearLimit -> MaterialTheme.colorScheme.tertiaryContainer
+                        else -> MaterialTheme.colorScheme.primaryContainer
+                    }
                 )
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text(
-                        "Total gastado hoy ($today)",
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    Text(
-                        totalToday.q(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                "Total gastado hoy ($today)",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                            Text(
+                                totalToday.q(),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = when {
+                                    isOverLimit -> MaterialTheme.colorScheme.error
+                                    isNearLimit -> MaterialTheme.colorScheme.tertiary
+                                    else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                }
+                            )
+                        }
+
+                        if (suggestedDailyLimit > 0) {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    "Límite sugerido",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Text(
+                                    suggestedDailyLimit.q(),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+
+                    if (suggestedDailyLimit > 0) {
+                        Spacer(Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { ((totalToday / suggestedDailyLimit).coerceIn(0.0, 1.0)).toFloat() },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = when {
+                                isOverLimit -> MaterialTheme.colorScheme.error
+                                isNearLimit -> MaterialTheme.colorScheme.tertiary
+                                else -> MaterialTheme.colorScheme.primary
+                            },
+                        )
+
+                        Text(
+                            "${((totalToday / suggestedDailyLimit) * 100).toInt()}% del límite diario",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
                     Text(
                         "${expenses.size} ${if (expenses.size == 1) "registro" else "registros"}",
                         style = MaterialTheme.typography.bodySmall
                     )
+                }
+            }
+
+            // Alerta si está sobre el límite
+            if (isOverLimit) {
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Column {
+                            Text(
+                                "¡Has excedido tu límite diario!",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Text(
+                                "Intenta reducir gastos el resto del día para cumplir tu meta mensual.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            } else if (isNearLimit) {
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            "Atención: Estás cerca de tu límite diario. Te quedan ${(suggestedDailyLimit - totalToday).q()}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
 
@@ -114,6 +228,8 @@ fun DailyExpenseScreen(
 
     if (showDialog) {
         AddExpenseDialog(
+            suggestedDailyLimit = suggestedDailyLimit,
+            currentTotal = totalToday,
             onDismiss = { showDialog = false },
             onConfirm = { category, amount, description ->
                 onAddExpense(category, amount, description)
@@ -176,6 +292,8 @@ private fun ExpenseItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddExpenseDialog(
+    suggestedDailyLimit: Double,
+    currentTotal: Double,
     onDismiss: () -> Unit,
     onConfirm: (ExpenseCategory, Double, String) -> Unit
 ) {
@@ -183,6 +301,11 @@ private fun AddExpenseDialog(
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
+    var showWarning by remember { mutableStateOf(false) }
+
+    // Verificar si el nuevo gasto excedería el límite
+    val amountValue = amount.toDoubleOrNull() ?: 0.0
+    val wouldExceedLimit = suggestedDailyLimit > 0 && (currentTotal + amountValue) > suggestedDailyLimit
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -226,11 +349,54 @@ private fun AddExpenseDialog(
                 // Monto
                 OutlinedTextField(
                     value = amount,
-                    onValueChange = { amount = it },
+                    onValueChange = {
+                        amount = it
+                        showWarning = false
+                    },
                     label = { Text("Monto (Q)") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = wouldExceedLimit
                 )
+
+                // ALERTA de límite excedido
+                if (wouldExceedLimit) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Column {
+                                Text(
+                                    "⚠️ Excederás tu límite diario",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Text(
+                                    "Con este gasto tendrás ${(currentTotal + amountValue).q()} de ${suggestedDailyLimit.q()}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Text(
+                                    "¿Realmente necesitas esto hoy?",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                    }
+                }
 
                 // Descripción
                 OutlinedTextField(
@@ -247,12 +413,26 @@ private fun AddExpenseDialog(
                 onClick = {
                     val amountValue = amount.toDoubleOrNull()
                     if (amountValue != null && amountValue > 0) {
-                        onConfirm(selectedCategory, amountValue, description)
+                        // Si excede el límite, mostrar confirmación adicional
+                        if (wouldExceedLimit && !showWarning) {
+                            showWarning = true
+                        } else {
+                            onConfirm(selectedCategory, amountValue, description)
+                        }
                     }
                 },
-                enabled = amount.toDoubleOrNull()?.let { it > 0 } == true
+                enabled = amount.toDoubleOrNull()?.let { it > 0 } == true,
+                colors = if (wouldExceedLimit && showWarning) {
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                } else ButtonDefaults.buttonColors()
             ) {
-                Text("Guardar")
+                Text(when {
+                    wouldExceedLimit && !showWarning -> "Confirmar de todas formas"
+                    wouldExceedLimit && showWarning -> "Sí, registrar gasto"
+                    else -> "Guardar"
+                })
             }
         },
         dismissButton = {

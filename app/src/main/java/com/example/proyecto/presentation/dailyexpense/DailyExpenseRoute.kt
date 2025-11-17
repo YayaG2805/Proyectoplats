@@ -12,10 +12,12 @@ fun DailyExpenseRoute(
 ) {
     val expenses by vm.todayExpenses.collectAsState()
     val total by vm.totalToday.collectAsState()
+    val suggestedLimit by vm.suggestedDailyLimit.collectAsState()
 
     DailyExpenseScreen(
         expenses = expenses,
         totalToday = total,
+        suggestedDailyLimit = suggestedLimit,
         onAddExpense = vm::addExpense,
         onDeleteExpense = vm::deleteExpense,
         onBack = onBack

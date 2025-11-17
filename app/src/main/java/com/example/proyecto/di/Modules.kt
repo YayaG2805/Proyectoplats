@@ -57,25 +57,25 @@ private val vmModule = module {
     // AuthViewModel
     viewModel { AuthViewModel(get(), get()) }
 
-    // DailyExpenseViewModel
-    viewModel { DailyExpenseViewModel(get(), get()) }
+    // DailyExpenseViewModel - Con MonthlyBudgetDao
+    viewModel { DailyExpenseViewModel(get(), get(), get()) }
 
-    // NewProfileViewModel - Necesita HistoryViewModel
-    viewModel { NewProfileViewModel(get()) }
+    // NewProfileViewModel - CORREGIDO: Ahora usa MonthlyBudgetDao y UserPreferences
+    viewModel { NewProfileViewModel(get(), get()) }
 
-    // ProfileViewModel - Necesita DailyExpenseDao, HistoryViewModel y UserPreferences
-    viewModel { ProfileViewModel(get(), get(), get()) }
+    // ProfileViewModel - Con todos los DAOs necesarios
+    viewModel { ProfileViewModel(get(), get(), get(), get(), get()) }
 
     // TipsBottomNavViewModel
     viewModel { TipsBottomNavViewModel(get()) }
 
-    // TipsViewModel - NUEVO: Para obtener gastos por categoría
+    // TipsViewModel - Para obtener gastos por categoría
     viewModel { TipsViewModel(get(), get()) }
 
     // BudgetStatusViewModel - Sincroniza gastos diarios con presupuesto mensual
     viewModel { BudgetStatusViewModel(get(), get(), get()) }
 
-    // SavingsIndexViewModel - NUEVO: Para mostrar índice de ahorro con gráficas
+    // SavingsIndexViewModel - Para mostrar índice de ahorro con gráficas
     viewModel { SavingsIndexViewModel(get(), get()) }
 }
 
