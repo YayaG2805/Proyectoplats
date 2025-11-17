@@ -6,10 +6,18 @@ import android.content.Context
 import android.content.Intent
 import java.util.Calendar
 
+/**
+ * Programador de alarmas para notificaciones diarias.
+ *
+ * Maneja la configuración y cancelación de alarmas repetitivas diarias.
+ */
 object AlarmScheduler {
 
     /**
-     * Programa una notificación diaria a las 8:00 PM
+     * Programa una notificación diaria a las 8:00 PM.
+     *
+     * La alarma se repetirá todos los días a la misma hora.
+     * Si ya pasó la hora de hoy, la primera alarma se disparará mañana.
      */
     fun scheduleDailyReminder(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -45,7 +53,7 @@ object AlarmScheduler {
     }
 
     /**
-     * Cancela la notificación diaria
+     * Cancela la notificación diaria programada.
      */
     fun cancelDailyReminder(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager

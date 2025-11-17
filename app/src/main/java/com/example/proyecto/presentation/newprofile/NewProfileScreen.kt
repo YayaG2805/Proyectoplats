@@ -3,24 +3,41 @@
 package com.example.proyecto.presentation.newprofile
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.koin.androidx.compose.koinViewModel
+import com.example.proyecto.domain.model.BudgetData
 
+/**
+ * Pantalla para crear un nuevo mes de presupuesto.
+ *
+ * Permite al usuario:
+ * - Ingresar datos de presupuesto completos
+ * - Cambiar modalidad de ahorro
+ * - Guardar en el historial
+ */
 @Composable
 fun NewProfileScreen(
     onSaved: (Long) -> Unit,
     onBack: () -> Unit,
-    onChangeModality: () -> Unit,
+    onChangeModality: (String) -> Unit,
     vm: NewProfileViewModel = koinViewModel()
 ) {
+    val uiState by vm.uiState.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Nuevo Mes") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("←") } }
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                    }
+                }
             )
         }
     ) { inner ->
@@ -28,26 +45,115 @@ fun NewProfileScreen(
             Modifier
                 .padding(inner)
                 .padding(16.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Formulario (placeholder)",
+                "Completa los datos de tu presupuesto mensual",
                 style = MaterialTheme.typography.titleMedium
             )
 
-            Spacer(Modifier.height(12.dp))
-
-            Button(
-                onClick = onChangeModality,
+            // Selector de modalidad
+            OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large
+                onClick = { onChangeModality(uiState.modality) }
             ) {
-                Text("Nueva modalidad")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Modalidad actual", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            uiState.modality,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    TextButton(onClick = { onChangeModality(uiState.modality) }) {
+                        Text("Cambiar")
+                    }
+                }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
-            Button(onClick = { onSaved(999L) }) {
-                Text("Guardar (demo)")
+            // Formulario
+            OutlinedTextField(
+                value = uiState.income,
+                onValueChange = vm::onIncomeChange,
+                label = { Text("Ingreso mensual (Q)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                isError = uiState.incomeError != null,
+                supportingText = uiState.incomeError?.let { { Text(it) } }
+            )
+
+            OutlinedTextField(
+                value = uiState.rent,
+                onValueChange = vm::onRentChange,
+                label = { Text("Renta (Q)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = uiState.utilities,
+                onValueChange = vm::onUtilitiesChange,
+                label = { Text("Servicios (Q)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = uiState.transport,
+                onValueChange = vm::onTransportChange,
+                label = { Text("Transporte (Q)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = uiState.other,
+                onValueChange = vm::onOtherChange,
+                label = { Text("Otros gastos (Q)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            // Mostrar error general si existe
+            if (uiState.error != null) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Text(
+                        uiState.error!!,
+                        modifier = Modifier.padding(12.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+
+            // Botón guardar
+            Button(
+                onClick = { vm.save(onSaved) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isSaving
+            ) {
+                if (uiState.isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(if (uiState.isSaving) "Guardando..." else "Guardar presupuesto")
             }
         }
     }

@@ -3,11 +3,14 @@ package com.example.proyecto.presentation.history
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.proyecto.notifications.NotificationHelper
 
 data class HistoryRow(val mes: String, val ingreso: String, val ahorro: String, val estado: String)
 
@@ -18,11 +21,24 @@ fun HistoryScreen(
     onAddNew: () -> Unit,
     onOpenDailyExpense: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Scaffold(
         floatingActionButton = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Botón para PROBAR notificación (debugging)
+                SmallFloatingActionButton(
+                    onClick = {
+                        // Enviar notificación de prueba inmediatamente
+                        NotificationHelper(context).sendTestNotification()
+                    },
+                    containerColor = MaterialTheme.colorScheme.tertiary
+                ) {
+                    Icon(Icons.Default.Notifications, "Probar notificación")
+                }
+
                 // Botón para gastos diarios
                 FloatingActionButton(
                     onClick = onOpenDailyExpense,
@@ -80,9 +96,8 @@ fun HistoryScreen(
                 Text("Aún no tienes registros de ahorro.", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(16.dp))
             } else {
-                // aquí dejas todo lo que ya tenías: tabs Mensual/Semanal/Todos, tabla, etc.
-                // HeaderRow()
-                // rows.forEach { RowItem(it) }
+                HeaderRow()
+                rows.forEach { RowItem(it) }
             }
 
             Spacer(Modifier.weight(1f))

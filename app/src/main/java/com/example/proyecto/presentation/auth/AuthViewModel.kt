@@ -3,6 +3,7 @@ package com.example.proyecto.presentation.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.proyecto.data.repository.UserRepository
+import com.example.proyecto.domain.model.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,7 +73,9 @@ class AuthViewModel(
             _ui.update { it.copy(loading = true, error = null) }
             val result = userRepository.login(current.loginEmail, current.loginPassword)
             result.fold(
-                onSuccess = {
+                onSuccess = { user ->
+                    // Guardar en sesión
+                    UserSession.login(user)
                     _ui.update { it.copy(loading = false, loginSuccess = true) }
                 },
                 onFailure = { e ->
@@ -108,7 +111,12 @@ class AuthViewModel(
                 password = current.registerPassword
             )
             result.fold(
-                onSuccess = {
+                onSuccess = { userId ->
+                    // Crear sesión automáticamente
+                    val user = userRepository.getUserById(userId)
+                    if (user != null) {
+                        UserSession.login(user)
+                    }
                     _ui.update { it.copy(loading = false, registerSuccess = true) }
                 },
                 onFailure = { e ->

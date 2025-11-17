@@ -12,6 +12,7 @@ import com.example.proyecto.presentation.flow.BudgetFormViewModel
 import com.example.proyecto.presentation.history.HistoryViewModel
 import com.example.proyecto.presentation.home.HomeViewModel
 import com.example.proyecto.presentation.newprofile.NewProfileViewModel
+import com.example.proyecto.presentation.profile.ProfileViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.androidx.viewmodel.dsl.viewModelOf
@@ -29,21 +30,35 @@ private val dataModule = module {
             .build()
     }
 
+    // DAOs
     single { get<AppDatabase>().userDao() }
     single { get<AppDatabase>().dailyExpenseDao() }
 
+    // Repositories
     single<UserRepository> { UserRepositoryImpl(get()) }
 }
 
 private val vmModule = module {
+    // ViewModels básicos
     viewModel { HomeViewModel() }
-    viewModel { NewProfileViewModel() }
     viewModel { DetailViewModel() }
     viewModel { BudgetFlowViewModel() }
     viewModelOf(::BudgetFormViewModel)
-    viewModel { HistoryViewModel() }
+
+    // HistoryViewModel - SINGLETON para compartir datos
+    single { HistoryViewModel() }
+
+    // AuthViewModel
     viewModel { AuthViewModel(get()) }
+
+    // DailyExpenseViewModel
     viewModel { DailyExpenseViewModel(get()) }
+
+    // NewProfileViewModel - Necesita HistoryViewModel
+    viewModel { NewProfileViewModel(get()) }
+
+    // ProfileViewModel - Necesita DailyExpenseDao y HistoryViewModel
+    viewModel { ProfileViewModel(get(), get()) }
 }
 
 val appModules = listOf(

@@ -44,4 +44,8 @@ class UserRepositoryImpl(
     } catch (e: Exception) {
         Result.failure(e)
     }
+
+    override suspend fun getUserById(userId: Long): UserEntity? {
+        return dao.getById(userId)
+    }
 }

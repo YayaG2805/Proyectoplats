@@ -14,17 +14,28 @@ import androidx.core.app.NotificationManagerCompat
 import com.example.proyecto.MainActivity
 import com.example.proyecto.R
 
+/**
+ * Helper para crear y enviar notificaciones en PiggyMobile.
+ *
+ * Maneja la creación del canal de notificaciones y el envío de recordatorios diarios.
+ */
 class NotificationHelper(private val context: Context) {
 
     companion object {
         const val CHANNEL_ID = "daily_expense_reminder"
         const val NOTIFICATION_ID = 1001
+
+        // Extras para navegación
+        const val EXTRA_NAVIGATE_TO_DAILY_EXPENSE = "navigate_to_daily_expense"
     }
 
     init {
         createNotificationChannel()
     }
 
+    /**
+     * Crea el canal de notificaciones (Android 8.0+)
+     */
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Recordatorios de gastos"
@@ -40,6 +51,14 @@ class NotificationHelper(private val context: Context) {
         }
     }
 
+    /**
+     * Envía la notificación de recordatorio diario.
+     *
+     * El mensaje cambia según si el usuario ya registró gastos hoy o no.
+     * Al tocar la notificación, abre la app directamente en la pantalla de gastos diarios.
+     *
+     * @param hasExpensesToday true si ya hay gastos registrados hoy
+     */
     fun sendDailyReminder(hasExpensesToday: Boolean) {
         val message = if (hasExpensesToday) {
             "Ya registraste algunos gastos hoy. ¿Hay algo más que agregar?"
@@ -49,7 +68,8 @@ class NotificationHelper(private val context: Context) {
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("open_daily_expense", true)
+            // Flag para que MainActivity sepa que debe navegar a DailyExpense
+            putExtra(EXTRA_NAVIGATE_TO_DAILY_EXPENSE, true)
         }
 
         val pendingIntent = PendingIntent.getActivity(
@@ -75,5 +95,15 @@ class NotificationHelper(private val context: Context) {
         ) {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
         }
+    }
+
+    /**
+     * Envía una notificación de prueba inmediatamente.
+     *
+     * Útil para debugging y verificar que el sistema de notificaciones funciona.
+     * Simula tener gastos registrados hoy.
+     */
+    fun sendTestNotification() {
+        sendDailyReminder(hasExpensesToday = true)
     }
 }

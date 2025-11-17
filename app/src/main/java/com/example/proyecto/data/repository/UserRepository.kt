@@ -15,4 +15,6 @@ interface UserRepository {
         email: String,
         password: String
     ): Result<UserEntity>
+
+    suspend fun getUserById(userId: Long): UserEntity?
 }
