@@ -18,6 +18,17 @@ class HistoryViewModel(
     private val userPreferences: UserPreferences
 ) : ViewModel() {
 
+    private val currentMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
+
+    // Presupuesto del mes actual (el único editable)
+    private val _currentMonthBudget = MutableStateFlow<MonthlyBudgetEntity?>(null)
+    val currentMonthBudget: StateFlow<MonthlyBudgetEntity?> = _currentMonthBudget.asStateFlow()
+
+    // Historial de meses anteriores (read-only)
+    private val _previousMonths = MutableStateFlow<List<HistoryRow>>(emptyList())
+    val previousMonths: StateFlow<List<HistoryRow>> = _previousMonths.asStateFlow()
+
+    // Todas las filas (para compatibilidad con código existente)
     private val _rows = MutableStateFlow<List<HistoryRow>>(emptyList())
     val rows: StateFlow<List<HistoryRow>> = _rows.asStateFlow()
 
@@ -27,12 +38,19 @@ class HistoryViewModel(
 
     /**
      * Carga el historial desde la base de datos.
+     * Separa el mes actual de los meses anteriores.
      */
     private fun loadHistoryFromDatabase() {
         viewModelScope.launch {
             userPreferences.userId.collect { userId ->
                 if (userId != null) {
                     monthlyBudgetDao.getAllByUser(userId).collect { budgets ->
+                        // Separar mes actual de históricos
+                        val current = budgets.firstOrNull { it.month == currentMonth }
+                        val previous = budgets.filter { it.month != currentMonth }
+
+                        _currentMonthBudget.value = current
+                        _previousMonths.value = previous.map { it.toHistoryRow() }
                         _rows.value = budgets.map { it.toHistoryRow() }
                     }
                 }
@@ -41,49 +59,92 @@ class HistoryViewModel(
     }
 
     /**
-     * Agregar una fila al historial a partir de los datos del presupuesto.
-     * Ahora guarda en la base de datos.
+     * Crear o actualizar el presupuesto del mes actual.
      */
     fun addFromBudget(data: BudgetData) {
         viewModelScope.launch {
             userPreferences.userId.collect { userId ->
                 if (userId != null) {
-                    val currentMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
+                    val existing = _currentMonthBudget.value
 
-                    monthlyBudgetDao.insert(
-                        MonthlyBudgetEntity(
-                            userId = userId,
-                            month = currentMonth,
-                            income = data.income,
-                            rent = data.rent,
-                            utilities = data.utilities,
-                            transport = data.transport,
-                            other = data.other,
-                            modality = data.modality
+                    if (existing != null) {
+                        // ACTUALIZAR existente - Usar update()
+                        monthlyBudgetDao.update(
+                            existing.copy(
+                                income = data.income,
+                                rent = data.rent,
+                                utilities = data.utilities,
+                                transport = data.transport,
+                                other = data.other,
+                                modality = data.modality
+                            )
                         )
-                    )
-                    // No necesitamos actualizar manualmente porque el Flow lo hace automáticamente
+                    } else {
+                        // Crear nuevo - Usar insert()
+                        monthlyBudgetDao.insert(
+                            MonthlyBudgetEntity(
+                                userId = userId,
+                                month = currentMonth,
+                                income = data.income,
+                                rent = data.rent,
+                                utilities = data.utilities,
+                                transport = data.transport,
+                                other = data.other,
+                                modality = data.modality
+                            )
+                        )
+                    }
                 }
             }
         }
     }
 
     /**
-     * Eliminar un presupuesto mensual del historial.
+     * Agregar ingreso extra al presupuesto del mes actual.
+     */
+    fun addExtraIncome(amount: Double) {
+        viewModelScope.launch {
+            val current = _currentMonthBudget.value
+            if (current != null) {
+                // USAR UPDATE en lugar de insert
+                monthlyBudgetDao.update(
+                    current.copy(income = current.income + amount)
+                )
+            }
+        }
+    }
+
+    /**
+     * Actualizar modalidad del presupuesto actual.
+     */
+    fun updateModality(newModality: String) {
+        viewModelScope.launch {
+            val current = _currentMonthBudget.value
+            if (current != null) {
+                // USAR UPDATE en lugar de insert
+                monthlyBudgetDao.update(
+                    current.copy(modality = newModality)
+                )
+            }
+        }
+    }
+
+    /**
+     * Eliminar un presupuesto mensual (solo meses anteriores).
      */
     fun deleteById(budgetId: Long) {
         viewModelScope.launch {
             val budget = monthlyBudgetDao.getById(budgetId)
-            if (budget != null) {
+            if (budget != null && budget.month != currentMonth) {
                 monthlyBudgetDao.delete(budget)
             }
         }
     }
 
     fun clear() {
-        // Esta función ya no limpia la lista, porque viene de la BD
-        // Solo se usa al cerrar sesión para limpiar el estado local si es necesario
         _rows.value = emptyList()
+        _currentMonthBudget.value = null
+        _previousMonths.value = emptyList()
     }
 
     /**
@@ -92,12 +153,10 @@ class HistoryViewModel(
     private fun MonthlyBudgetEntity.toHistoryRow(): HistoryRow {
         val nf = NumberFormat.getCurrencyInstance(Locale("es", "GT"))
 
-        // Calcular ahorro según modalidad
         val totalExpenses = rent + utilities + transport + other
         val balance = income - totalExpenses
         val savingPercentage = if (income > 0) (balance / income) * 100 else 0.0
 
-        // Determinar estado basado en la modalidad
         val estado = when (modality) {
             "EXTREMO" -> if (savingPercentage >= 30) "Cumplido" else if (savingPercentage >= 15) "Parcial" else "No cumplido"
             "MEDIO" -> if (savingPercentage >= 15) "Cumplido" else if (savingPercentage >= 8) "Parcial" else "No cumplido"
@@ -105,7 +164,6 @@ class HistoryViewModel(
             else -> if (savingPercentage >= 10) "Cumplido" else "Parcial"
         }
 
-        // Formatear mes (de "2025-11" a "Noviembre 2025")
         val monthFormatted = try {
             val date = LocalDate.parse("$month-01")
             date.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale("es", "GT")))

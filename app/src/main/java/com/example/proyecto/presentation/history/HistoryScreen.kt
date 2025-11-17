@@ -33,14 +33,17 @@ data class HistoryRow(
 @Composable
 fun HistoryScreen(
     rows: List<HistoryRow>,
-    onAddNew: () -> Unit,
+    currentMonthBudget: com.example.proyecto.data.local.MonthlyBudgetEntity?,
+    onEditCurrent: () -> Unit,
+    onAddExtraIncome: () -> Unit,
+    onViewSavingsIndex: () -> Unit,
     onOpenDailyExpense: () -> Unit,
     onDelete: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val (showDeleteDialog, setShowDeleteDialog) = remember { mutableStateOf<Long?>(null) }
 
-    // NUEVO: ViewModel para el estado del presupuesto
+    // ViewModel para el estado del presupuesto
     val budgetStatusVM: BudgetStatusViewModel = koinViewModel()
     val budgetStatus by budgetStatusVM.uiState.collectAsState()
 
@@ -49,16 +52,6 @@ fun HistoryScreen(
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Botón para PROBAR notificación (debugging)
-                SmallFloatingActionButton(
-                    onClick = {
-                        NotificationHelper(context).sendTestNotification()
-                    },
-                    containerColor = MaterialTheme.colorScheme.tertiary
-                ) {
-                    Icon(Icons.Default.Notifications, "Probar notificación")
-                }
-
                 // Botón para gastos diarios
                 FloatingActionButton(
                     onClick = onOpenDailyExpense,
@@ -75,10 +68,10 @@ fun HistoryScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            Text("Mi historial de ahorro", style = MaterialTheme.typography.headlineSmall)
+            Text("Mi presupuesto mensual", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(12.dp))
 
-            // NUEVO: Widget de estado del presupuesto actual
+            // Widget de estado del presupuesto actual
             if (budgetStatus.hasMonthlyBudget) {
                 BudgetStatusWidget(
                     monthName = budgetStatus.currentMonth,
@@ -93,7 +86,7 @@ fun HistoryScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
-            // Card de acceso rápido
+            // Card de acceso rápido a gastos diarios
             ElevatedCard(
                 onClick = onOpenDailyExpense,
                 modifier = Modifier.fillMaxWidth(),
@@ -127,18 +120,72 @@ fun HistoryScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            if (rows.isEmpty()) {
-                Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "Aún no tienes registros de ahorro.\n¡Crea tu primer presupuesto mensual!",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            // Sección del mes actual
+            Text(
+                "Presupuesto del Mes Actual",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(8.dp))
+
+            if (currentMonthBudget == null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
                     )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "No tienes presupuesto para este mes",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Crea tu presupuesto mensual para empezar",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = onEditCurrent) {
+                            Text("Crear presupuesto")
+                        }
+                    }
                 }
             } else {
+                CurrentMonthCard(
+                    budget = currentMonthBudget,
+                    onEdit = onEditCurrent,
+                    onAddIncome = onAddExtraIncome
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Botón de Índice de Ahorro (reemplaza "Comparar resultados")
+            Button(
+                onClick = onViewSavingsIndex,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = rows.isNotEmpty()
+            ) {
+                Icon(Icons.Default.ShowChart, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Ver mi índice de ahorro")
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Historial de meses anteriores
+            if (rows.filter { it.id != currentMonthBudget?.id }.isNotEmpty()) {
                 Text(
                     "Historial de Meses Anteriores",
                     style = MaterialTheme.typography.titleMedium,
@@ -148,25 +195,13 @@ fun HistoryScreen(
 
                 HeaderRow()
                 Spacer(Modifier.height(4.dp))
-                rows.forEach { row ->
+
+                rows.filter { it.id != currentMonthBudget?.id }.forEach { row ->
                     RowItem(row, onDeleteClick = { setShowDeleteDialog(row.id) })
                 }
-                Spacer(Modifier.weight(1f))
             }
 
-            Button(
-                onClick = onAddNew,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Agregar nuevo registro mensual") }
-
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = { /* comparar resultados */ },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = rows.size >= 2
-            ) {
-                Text("Comparar resultados")
-            }
+            Spacer(Modifier.weight(1f))
         }
     }
 
@@ -197,6 +232,115 @@ fun HistoryScreen(
             }
         )
     }
+}
+
+@Composable
+private fun CurrentMonthCard(
+    budget: com.example.proyecto.data.local.MonthlyBudgetEntity,
+    onEdit: () -> Unit,
+    onAddIncome: () -> Unit
+) {
+    val nf = NumberFormat.getCurrencyInstance(Locale("es", "GT"))
+    val totalExpenses = budget.rent + budget.utilities + budget.transport + budget.other
+    val savings = budget.income - totalExpenses
+
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "Ingreso",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Text(
+                        nf.format(budget.income),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Chip(
+                    label = { Text(budget.modality) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                )
+            }
+
+            Divider()
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Gastos fijos", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    nf.format(totalExpenses),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Ahorro planificado", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    nf.format(savings),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (savings > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onEdit,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Edit, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Editar")
+                }
+
+                FilledTonalButton(
+                    onClick = onAddIncome,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("+ Ingreso")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Chip(label: @Composable () -> Unit, colors: ChipColors) {
+    AssistChip(
+        onClick = {},
+        label = label,
+        colors = colors,
+        enabled = false
+    )
 }
 
 /**
@@ -244,7 +388,6 @@ private fun BudgetStatusWidget(
 
             Divider()
 
-            // Balance actual vs planificado
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -277,7 +420,6 @@ private fun BudgetStatusWidget(
                 }
             }
 
-            // Barra de progreso
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 LinearProgressIndicator(
                     progress = { ((percentageSpent / 100).coerceIn(0.0, 1.0)).toFloat() },
@@ -297,7 +439,6 @@ private fun BudgetStatusWidget(
 
             Divider()
 
-            // Balance restante
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -335,7 +476,6 @@ private fun BudgetStatusWidget(
                 }
             }
 
-            // Alerta si está sobre presupuesto
             if (isOverBudget) {
                 Card(
                     colors = CardDefaults.cardColors(
@@ -425,7 +565,10 @@ private fun HistoryPreview() {
                 HistoryRow(2, "Febrero 2025", "Q 7000", "Q 500", "Parcial"),
                 HistoryRow(3, "Enero 2025", "Q 7000", "Q 300", "No cumplido"),
             ),
-            onAddNew = {},
+            currentMonthBudget = null,
+            onEditCurrent = {},
+            onAddExtraIncome = {},
+            onViewSavingsIndex = {},
             onOpenDailyExpense = {},
             onDelete = {}
         )

@@ -3,7 +3,6 @@ package com.example.proyecto.presentation.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -16,7 +15,6 @@ import com.example.proyecto.presentation.auth.AuthRoute
 import com.example.proyecto.presentation.auth.SplashScreen
 import com.example.proyecto.presentation.dailyexpense.DailyExpenseRoute
 import com.example.proyecto.presentation.flow.BudgetFlowViewModel
-import com.example.proyecto.presentation.flow.TipsRoute
 import com.example.proyecto.presentation.flow.TipsBottomNavRoute
 import com.example.proyecto.presentation.history.HistoryRoute
 import com.example.proyecto.presentation.home.HomeScreen
@@ -25,6 +23,7 @@ import com.example.proyecto.presentation.detail.DetailScreen
 import com.example.proyecto.presentation.profile.ProfileScreen
 import com.example.proyecto.presentation.history.HistoryViewModel
 import com.example.proyecto.presentation.newprofile.NewProfileViewModel
+import com.example.proyecto.presentation.savingsindex.SavingsIndexScreen
 
 // ===== RUTAS DE NAVEGACIÓN =====
 
@@ -35,6 +34,7 @@ import com.example.proyecto.presentation.newprofile.NewProfileViewModel
 @Serializable object DailyExpenseDest
 @Serializable object ProfileDest
 @Serializable object HomeDest
+@Serializable object SavingsIndexDest
 @Serializable data class NewProfileDest(val redirectToId: Long)
 @Serializable data class DetailDest(val id: Long)
 
@@ -42,9 +42,10 @@ import com.example.proyecto.presentation.newprofile.NewProfileViewModel
  * NavHost principal de PiggyMobile.
  *
  * CAMBIOS PRINCIPALES:
- * - Eliminada navegación a ModalityScreen desde NewProfile (ahora es dropdown local)
- * - Registro va directo al historial
- * - Tips disponible en Bottom Nav si hay presupuestos
+ * - Un solo presupuesto mensual activo
+ * - Editar/agregar ingreso al presupuesto actual
+ * - Nueva ruta: SavingsIndexDest (reemplaza comparar resultados)
+ * - Tips personalizados por categoría de gasto
  */
 @Composable
 fun AppNavHost(startWithDailyExpense: Boolean = false) {
@@ -133,7 +134,12 @@ fun AppNavHost(startWithDailyExpense: Boolean = false) {
 
             composable<HistoryDest> {
                 HistoryRoute(
-                    onAddNew = { nav.navigate(NewProfileDest(redirectToId = 0L)) },
+                    onEditCurrent = {
+                        nav.navigate(NewProfileDest(redirectToId = 0L))
+                    },
+                    onViewSavingsIndex = {
+                        nav.navigate(SavingsIndexDest)
+                    },
                     navController = nav
                 )
             }
@@ -189,6 +195,13 @@ fun AppNavHost(startWithDailyExpense: Boolean = false) {
                 val args = backStackEntry.toRoute<DetailDest>()
                 DetailScreen(
                     profileId = args.id,
+                    onBack = { nav.popBackStack() }
+                )
+            }
+
+            // NUEVA RUTA: Índice de Ahorro
+            composable<SavingsIndexDest> {
+                SavingsIndexScreen(
                     onBack = { nav.popBackStack() }
                 )
             }

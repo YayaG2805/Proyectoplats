@@ -9,6 +9,12 @@ interface MonthlyBudgetDao {
     @Insert
     suspend fun insert(budget: MonthlyBudgetEntity): Long
 
+    @Update
+    suspend fun update(budget: MonthlyBudgetEntity)
+
+    @Upsert
+    suspend fun upsert(budget: MonthlyBudgetEntity): Long
+
     @Query("SELECT * FROM monthly_budgets WHERE userId = :userId ORDER BY createdAt DESC")
     fun getAllByUser(userId: Long): Flow<List<MonthlyBudgetEntity>>
 
@@ -17,6 +23,9 @@ interface MonthlyBudgetDao {
 
     @Query("SELECT * FROM monthly_budgets WHERE userId = :userId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLatestByUser(userId: Long): MonthlyBudgetEntity?
+
+    @Query("SELECT * FROM monthly_budgets WHERE userId = :userId AND month = :month LIMIT 1")
+    suspend fun getByUserAndMonth(userId: Long, month: String): MonthlyBudgetEntity?
 
     @Delete
     suspend fun delete(budget: MonthlyBudgetEntity)

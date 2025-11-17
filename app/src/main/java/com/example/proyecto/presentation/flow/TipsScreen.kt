@@ -3,16 +3,24 @@ package com.example.proyecto.presentation.flow
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.proyecto.domain.model.BudgetData
+import org.koin.androidx.compose.koinViewModel
 import kotlin.math.roundToInt
 
-
 @Composable
-fun TipsScreen(data: BudgetData, onBackToSummary: ()->Unit) {
-    val tips = generatePersonalizedTips(data)
+fun TipsScreen(
+    data: BudgetData,
+    onBackToSummary: () -> Unit,
+    vm: TipsViewModel = koinViewModel()
+) {
+    // Obtener gastos por categoría desde ViewModel
+    val categoryExpenses by vm.categoryExpenses.collectAsState()
+
+    val tips = generatePersonalizedTips(data, categoryExpenses)
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("Consejos personalizados para ti", style = MaterialTheme.typography.headlineSmall)
@@ -21,6 +29,12 @@ fun TipsScreen(data: BudgetData, onBackToSummary: ()->Unit) {
             "Basado en tu modalidad: ${data.modality}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Y tus gastos reales del mes",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(12.dp))
 
@@ -80,133 +94,221 @@ data class PersonalizedTip(
 
 enum class TipPriority { HIGH, MEDIUM, LOW }
 
-fun generatePersonalizedTips(data: BudgetData): List<PersonalizedTip> {
+// Data class para gastos por categoría (usado desde ViewModel)
+data class CategoryExpenseData(
+    val category: String,
+    val total: Double,
+    val count: Int
+)
+
+fun generatePersonalizedTips(
+    data: BudgetData,
+    categoryExpenses: List<CategoryExpenseData>
+): List<PersonalizedTip> {
     val tips = mutableListOf<PersonalizedTip>()
     val totalExpenses = data.rent + data.utilities + data.transport + data.other
     val balance = data.income - totalExpenses
     val savingPercentage = if (data.income > 0) (balance / data.income) * 100 else 0.0
 
-    // Tips según modalidad
+    // TIPS BASADOS EN GASTOS DIARIOS REALES POR CATEGORÍA
+    val totalDailyExpenses = categoryExpenses.sumOf { it.total }
+
+    // 1. Tips por categoría de gasto diario
+    categoryExpenses.sortedByDescending { it.total }.take(3).forEach { expense ->
+        val percentage = if (totalDailyExpenses > 0) (expense.total / totalDailyExpenses) * 100 else 0.0
+
+        when (expense.category) {
+            "COMIDA" -> {
+                if (percentage > 40) {
+                    tips.add(PersonalizedTip(
+                        "COMIDA - Tu mayor gasto",
+                        "Gastas Q${expense.total.roundToInt()} en comida (${percentage.roundToInt()}% de tus gastos variables). " +
+                                "Considera: cocinar más en casa, comprar en mercados locales, evitar delivery diario.",
+                        potentialSaving = expense.total * 0.30,
+                        priority = TipPriority.HIGH
+                    ))
+                } else if (percentage > 25) {
+                    tips.add(PersonalizedTip(
+                        "COMIDA",
+                        "Tu gasto en comida es Q${expense.total.roundToInt()}. Tip: prepara comidas para toda la semana (meal prep) " +
+                                "y lleva lunch al trabajo/universidad. Ahorro estimado: 25-30%",
+                        potentialSaving = expense.total * 0.25,
+                        priority = TipPriority.MEDIUM
+                    ))
+                }
+            }
+
+            "TRANSPORTE" -> {
+                if (percentage > 30) {
+                    tips.add(PersonalizedTip(
+                        "TRANSPORTE - Gasto elevado",
+                        "Gastas Q${expense.total.roundToInt()} en transporte. Alternativas: usa transporte público, " +
+                                "comparte viajes (carpooling), considera bicicleta para distancias cortas.",
+                        potentialSaving = expense.total * 0.40,
+                        priority = TipPriority.HIGH
+                    ))
+                } else if (percentage > 20) {
+                    tips.add(PersonalizedTip(
+                        "TRANSPORTE",
+                        "Transporte: Q${expense.total.roundToInt()}. Planifica rutas eficientes y agrupa tus salidas " +
+                                "para hacer varias cosas en un solo viaje.",
+                        potentialSaving = expense.total * 0.20,
+                        priority = TipPriority.MEDIUM
+                    ))
+                }
+            }
+
+            "ENTRETENIMIENTO" -> {
+                if (percentage > 25) {
+                    tips.add(PersonalizedTip(
+                        "ENTRETENIMIENTO - Alto",
+                        "Gastas Q${expense.total.roundToInt()} en entretenimiento. Alternativas gratis: eventos públicos, " +
+                                "parques, actividades al aire libre, noches de juegos en casa.",
+                        potentialSaving = expense.total * 0.50,
+                        priority = TipPriority.HIGH
+                    ))
+                } else if (percentage > 15) {
+                    tips.add(PersonalizedTip(
+                        "ENTRETENIMIENTO",
+                        "Entretenimiento: Q${expense.total.roundToInt()}. Reduce salidas a 1-2 por mes, " +
+                                "cancela suscripciones que no uses, busca opciones gratuitas.",
+                        potentialSaving = expense.total * 0.30,
+                        priority = TipPriority.MEDIUM
+                    ))
+                }
+            }
+
+            "SERVICIOS" -> {
+                if (percentage > 20) {
+                    tips.add(PersonalizedTip(
+                        "SERVICIOS",
+                        "Gastas Q${expense.total.roundToInt()} en servicios extra. Revisa suscripciones (streaming, apps, gym) " +
+                                "y cancela las que no uses. Ahorro típico: Q80-150/mes",
+                        potentialSaving = 115.0,
+                        priority = TipPriority.MEDIUM
+                    ))
+                }
+            }
+
+            "SALUD" -> {
+                tips.add(PersonalizedTip(
+                    "SALUD",
+                    "Gastos en salud: Q${expense.total.roundToInt()}. Importante no descuidar esto, " +
+                            "pero considera: usar genéricos, chequeos preventivos gratuitos, y seguro médico.",
+                    priority = TipPriority.LOW
+                ))
+            }
+
+            "OTROS" -> {
+                if (percentage > 30) {
+                    tips.add(PersonalizedTip(
+                        "OTROS - Gastos hormiga detectados",
+                        "Q${expense.total.roundToInt()} en gastos no categorizados. ALERTA: Son los gastos hormiga. " +
+                                "Registra TODO por una semana para identificar dónde se va tu dinero.",
+                        potentialSaving = expense.total * 0.40,
+                        priority = TipPriority.HIGH
+                    ))
+                }
+            }
+        }
+    }
+
+    // 2. Tips según modalidad
     when (data.modality) {
         "EXTREMO" -> {
             tips.add(PersonalizedTip(
                 "MODO EXTREMO",
-                "Estás en modo extremo. Considera el reto '30 días sin gastos innecesarios' para maximizar tu ahorro.",
+                "Estás en modo extremo. Meta: ahorrar 30%+ de tu ingreso. " +
+                        "Reto: '30 días sin gastos innecesarios'. Solo gastos esenciales este mes.",
                 priority = TipPriority.HIGH
             ))
 
-            if (data.other > 0) {
+            if (totalDailyExpenses > data.income * 0.20) {
                 tips.add(PersonalizedTip(
-                    "Otros gastos",
-                    "Tienes Q${data.other.roundToInt()} en otros gastos. En modo extremo, intenta reducirlos al 100% este mes.",
-                    potentialSaving = data.other,
+                    "ALERTA MODO EXTREMO",
+                    "Has gastado Q${totalDailyExpenses.roundToInt()} en gastos variables. " +
+                            "En modo extremo deberías mantenerlos bajo Q${(data.income * 0.15).roundToInt()}",
                     priority = TipPriority.HIGH
                 ))
             }
-
-            tips.add(PersonalizedTip(
-                "Transporte",
-                "Considera caminar o usar bicicleta 3 días a la semana. Ahorro potencial: 50% de Q${data.transport.roundToInt()}",
-                potentialSaving = data.transport * 0.5,
-                priority = TipPriority.MEDIUM
-            ))
         }
 
         "MEDIO" -> {
             tips.add(PersonalizedTip(
                 "MODO EQUILIBRADO",
-                "Balance perfecto entre ahorro y calidad de vida. Mantén el enfoque en gastos conscientes.",
+                "Balance entre ahorro y calidad de vida. Meta: ahorrar 15% de tu ingreso. " +
+                        "Mantén gastos conscientes sin sacrificar todo.",
                 priority = TipPriority.MEDIUM
             ))
 
-            if (data.other > data.income * 0.15) {
+            if (savingPercentage < 10) {
                 tips.add(PersonalizedTip(
-                    "Otros gastos",
-                    "Tus 'otros gastos' superan el 15% de tu ingreso. Reduce a Q${(data.income * 0.10).roundToInt()} para mejorar.",
-                    potentialSaving = data.other - (data.income * 0.10),
+                    "Mejorar ahorro",
+                    "Actualmente ahorras ${savingPercentage.roundToInt()}%. Para modo medio, " +
+                            "intenta llegar al 15%. Necesitas reducir gastos en Q${((data.income * 0.15) - balance).roundToInt()}",
+                    potentialSaving = (data.income * 0.15) - balance,
                     priority = TipPriority.MEDIUM
                 ))
             }
-
-            tips.add(PersonalizedTip(
-                "Streaming y suscripciones",
-                "Revisa tus suscripciones. Cancela 1-2 que uses menos. Ahorro estimado: Q80-Q150/mes",
-                potentialSaving = 115.0,
-                priority = TipPriority.LOW
-            ))
         }
 
         "IMPREVISTO" -> {
             val emergencyFund = data.income * 0.20
             tips.add(PersonalizedTip(
                 "FONDO DE EMERGENCIA",
-                "Tu objetivo: acumular Q${emergencyFund.roundToInt()} (20% de tu ingreso) para imprevistos.",
+                "Meta: acumular Q${emergencyFund.roundToInt()} (20% de tu ingreso) para imprevistos. " +
+                        "Este mes intenta ahorrar Q${(emergencyFund / 3).roundToInt()} mínimo.",
                 priority = TipPriority.HIGH
             ))
-
-            if (savingPercentage < 15) {
-                tips.add(PersonalizedTip(
-                    "Meta de ahorro",
-                    "Actualmente ahorras ${savingPercentage.roundToInt()}%. Para imprevistos, apunta al 15-20% de tu ingreso.",
-                    potentialSaving = (data.income * 0.15) - balance,
-                    priority = TipPriority.HIGH
-                ))
-            }
         }
     }
 
-    // Tips generales basados en gastos específicos
-    if (data.transport > data.income * 0.15) {
+    // 3. Tips sobre gastos fijos del presupuesto
+    if (data.rent > data.income * 0.30) {
         tips.add(PersonalizedTip(
-            "Transporte",
-            "Tu transporte es ${((data.transport/data.income)*100).roundToInt()}% de tu ingreso. Ideal: 10-15%. Prueba compartir auto o transporte público.",
-            potentialSaving = data.transport - (data.income * 0.12),
+            "Renta alta",
+            "Tu renta es ${((data.rent/data.income)*100).roundToInt()}% de tu ingreso. " +
+                    "Ideal: 25-30%. Considera mudarte o buscar compañero de casa.",
+            potentialSaving = data.rent - (data.income * 0.25),
             priority = TipPriority.MEDIUM
         ))
     }
 
-    if (data.utilities > data.income * 0.10) {
+    if (data.transport > data.income * 0.15) {
         tips.add(PersonalizedTip(
-            "Servicios",
-            "Servicios altos (${((data.utilities/data.income)*100).roundToInt()}%). Desconecta aparatos no usados, reduce agua caliente.",
-            potentialSaving = data.utilities * 0.15,
+            "Transporte fijo alto",
+            "Transporte fijo: Q${data.transport.roundToInt()}. Considera opciones más económicas: " +
+                    "transporte público, bicicleta, vivir más cerca del trabajo/estudio.",
+            potentialSaving = data.transport * 0.30,
             priority = TipPriority.LOW
         ))
     }
 
-    // Tips de ahorro general
-    tips.add(PersonalizedTip(
-        "Compras inteligentes",
-        "Compra a granel: arroz, frijol, pasta. Ahorro promedio: 8-12% vs compras semanales pequeñas.",
-        potentialSaving = totalExpenses * 0.10,
-        priority = TipPriority.LOW
-    ))
-
+    // 4. Tips generales de ahorro
     if (balance < data.income * 0.10) {
         tips.add(PersonalizedTip(
-            "ALERTA",
-            "Tu ahorro actual es muy bajo. Revisa gastos hormiga: café, antojos, apps de delivery.",
+            "ALERTA - Ahorro bajo",
+            "Tu ahorro actual es muy bajo (${savingPercentage.roundToInt()}%). " +
+                    "Aplica la regla 50/30/20: 50% necesidades, 30% gustos, 20% ahorro.",
             priority = TipPriority.HIGH
         ))
     }
 
-    return tips.sortedByDescending { it.priority }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun TipsPreview() {
-    MaterialTheme {
-        TipsScreen(
-            data = BudgetData(
-                income = 7000.0,
-                rent = 2000.0,
-                utilities = 500.0,
-                transport = 800.0,
-                other = 600.0,
-                modality = "MEDIO"
-            ),
-            onBackToSummary = {}
-        )
+    if (tips.size < 3) {
+        tips.add(PersonalizedTip(
+            "Consejo general",
+            "Regla de oro: antes de comprar algo, espera 24 horas. Si después de un día todavía lo quieres, cómpralo. " +
+                    "Esto elimina compras impulsivas.",
+            priority = TipPriority.LOW
+        ))
     }
+
+    // Ordenar por prioridad
+    return tips.sortedWith(compareBy<PersonalizedTip> {
+        when(it.priority) {
+            TipPriority.HIGH -> 0
+            TipPriority.MEDIUM -> 1
+            TipPriority.LOW -> 2
+        }
+    }.thenByDescending { it.potentialSaving })
 }

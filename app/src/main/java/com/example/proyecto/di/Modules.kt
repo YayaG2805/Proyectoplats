@@ -11,10 +11,12 @@ import com.example.proyecto.presentation.dailyexpense.DailyExpenseViewModel
 import com.example.proyecto.presentation.detail.DetailViewModel
 import com.example.proyecto.presentation.flow.BudgetFlowViewModel
 import com.example.proyecto.presentation.flow.TipsBottomNavViewModel
+import com.example.proyecto.presentation.flow.TipsViewModel
 import com.example.proyecto.presentation.history.HistoryViewModel
 import com.example.proyecto.presentation.home.HomeViewModel
 import com.example.proyecto.presentation.newprofile.NewProfileViewModel
 import com.example.proyecto.presentation.profile.ProfileViewModel
+import com.example.proyecto.presentation.savingsindex.SavingsIndexViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
@@ -67,8 +69,14 @@ private val vmModule = module {
     // TipsBottomNavViewModel
     viewModel { TipsBottomNavViewModel(get()) }
 
-    // BudgetStatusViewModel - NUEVO: Sincroniza gastos diarios con presupuesto mensual
+    // TipsViewModel - NUEVO: Para obtener gastos por categoría
+    viewModel { TipsViewModel(get(), get()) }
+
+    // BudgetStatusViewModel - Sincroniza gastos diarios con presupuesto mensual
     viewModel { BudgetStatusViewModel(get(), get(), get()) }
+
+    // SavingsIndexViewModel - NUEVO: Para mostrar índice de ahorro con gráficas
+    viewModel { SavingsIndexViewModel(get(), get()) }
 }
 
 val appModules = listOf(
