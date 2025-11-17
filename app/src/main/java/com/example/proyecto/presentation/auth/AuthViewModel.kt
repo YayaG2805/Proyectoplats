@@ -2,6 +2,7 @@ package com.example.proyecto.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.proyecto.data.local.UserPreferences
 import com.example.proyecto.data.repository.UserRepository
 import com.example.proyecto.domain.model.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +26,8 @@ data class AuthUiState(
 )
 
 class AuthViewModel(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val userPreferences: UserPreferences
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(AuthUiState())
@@ -117,6 +119,7 @@ class AuthViewModel(
                     if (user != null) {
                         UserSession.login(user)
                     }
+                    // CAMBIO: registerSuccess ahora va directo al historial
                     _ui.update { it.copy(loading = false, registerSuccess = true) }
                 },
                 onFailure = { e ->

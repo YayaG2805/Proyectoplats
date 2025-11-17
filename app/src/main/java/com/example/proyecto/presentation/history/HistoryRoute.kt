@@ -19,6 +19,9 @@ fun HistoryRoute(
         onAddNew = onAddNew,
         onOpenDailyExpense = {
             navController?.navigate(DailyExpenseDest)
+        },
+        onDelete = { budgetId ->
+            vm.deleteById(budgetId)
         }
     )
 }

@@ -2,9 +2,11 @@ package com.example.proyecto.data.repository
 
 import com.example.proyecto.data.local.UserDao
 import com.example.proyecto.data.local.UserEntity
+import com.example.proyecto.data.local.UserPreferences
 
 class UserRepositoryImpl(
-    private val dao: UserDao
+    private val dao: UserDao,
+    private val prefs: UserPreferences
 ) : UserRepository {
 
     override suspend fun register(
@@ -25,6 +27,8 @@ class UserRepositoryImpl(
                     password = password
                 )
             )
+            // Guardar en DataStore
+            prefs.saveUser(id, nombre, apellido, email)
             Result.success(id)
         }
     } catch (e: Exception) {
@@ -39,6 +43,8 @@ class UserRepositoryImpl(
         if (user == null || user.password != password) {
             Result.failure(IllegalArgumentException("Correo o contraseña incorrectos"))
         } else {
+            // Guardar en DataStore
+            prefs.saveUser(user.id, user.nombre, user.apellido, user.email)
             Result.success(user)
         }
     } catch (e: Exception) {

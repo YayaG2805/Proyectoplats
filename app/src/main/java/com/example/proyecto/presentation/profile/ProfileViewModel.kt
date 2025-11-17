@@ -3,6 +3,8 @@ package com.example.proyecto.presentation.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.proyecto.data.local.DailyExpenseDao
+import com.example.proyecto.data.local.UserPreferences
+import com.example.proyecto.domain.model.UserSession
 import com.example.proyecto.presentation.history.HistoryViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -21,7 +23,8 @@ data class ProfileUiState(
 
 class ProfileViewModel(
     private val dailyExpenseDao: DailyExpenseDao,
-    private val historyViewModel: HistoryViewModel
+    private val historyViewModel: HistoryViewModel,
+    private val userPreferences: UserPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -33,19 +36,30 @@ class ProfileViewModel(
     }
 
     /**
-     * Carga los datos del usuario desde la base de datos.
-     * TODO: En producción, obtener de UserDao con el usuario logueado
+     * Carga los datos del usuario desde DataStore.
      */
     private fun loadUserData() {
         viewModelScope.launch {
-            // TODO: Obtener usuario real de la sesión
-            // Por ahora usamos datos de ejemplo
-            _uiState.update {
-                it.copy(
-                    userName = "Usuario PiggyMobile",
-                    userEmail = "usuario@piggymobile.com",
-                    lastPasswordChange = "Hace 2 meses"
-                )
+            // Combinar flows del DataStore
+            combine(
+                userPreferences.userName,
+                userPreferences.userLastName,
+                userPreferences.userEmail
+            ) { nombre, apellido, email ->
+                Triple(nombre, apellido, email)
+            }.collect { (nombre, apellido, email) ->
+                val fullName = if (nombre.isNotBlank() && apellido.isNotBlank()) {
+                    "$nombre $apellido"
+                } else {
+                    "Usuario PiggyMobile"
+                }
+
+                _uiState.update {
+                    it.copy(
+                        userName = fullName,
+                        userEmail = email.ifBlank { "usuario@piggymobile.com" }
+                    )
+                }
             }
         }
     }
@@ -73,11 +87,14 @@ class ProfileViewModel(
                 }
             }
 
-            // Obtener total de gastos diarios registrados
-            // TODO: userId real
-            dailyExpenseDao.getRecentExpenses(1L).collect { expenses ->
-                _uiState.update {
-                    it.copy(totalExpenses = expenses.size)
+            // Obtener total de gastos diarios registrados usando userId del DataStore
+            userPreferences.userId.collect { userId ->
+                if (userId != null) {
+                    dailyExpenseDao.getRecentExpenses(userId).collect { expenses ->
+                        _uiState.update {
+                            it.copy(totalExpenses = expenses.size)
+                        }
+                    }
                 }
             }
         }
@@ -116,10 +133,11 @@ class ProfileViewModel(
      */
     fun logout() {
         viewModelScope.launch {
-            // TODO: Limpiar sesión
-            // - Borrar token de autenticación
-            // - Limpiar SharedPreferences/DataStore
-            // - Resetear ViewModels
+            // Limpiar DataStore
+            userPreferences.clearUser()
+
+            // Limpiar sesión
+            UserSession.logout()
 
             // Limpiar historial local
             historyViewModel.clear()

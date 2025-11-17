@@ -61,6 +61,8 @@ dependencies {
     // Koin (DI)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
+// DataStore
+    implementation(libs.datastore.preferences)
 
     // Room
     implementation(libs.room.runtime)
