@@ -1,6 +1,8 @@
 package com.example.proyecto.presentation.history
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -9,34 +11,94 @@ import androidx.compose.ui.tooling.preview.Preview
 
 data class HistoryRow(val mes: String, val ingreso: String, val ahorro: String, val estado: String)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(rows: List<HistoryRow>, onAddNew: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Mi historial de ahorro", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
-
-        if (rows.isEmpty()) {
-            Text("Aún no tienes registros de ahorro.", style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(16.dp))
-        } else {
-            // aquí dejas todo lo que ya tenías: tabs Mensual/Semanal/Todos, tabla, etc.
-            // HeaderRow()
-            // rows.forEach { RowItem(it) }
+fun HistoryScreen(
+    rows: List<HistoryRow>,
+    onAddNew: () -> Unit,
+    onOpenDailyExpense: () -> Unit
+) {
+    Scaffold(
+        floatingActionButton = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Botón para gastos diarios
+                FloatingActionButton(
+                    onClick = onOpenDailyExpense,
+                    containerColor = MaterialTheme.colorScheme.secondary
+                ) {
+                    Icon(Icons.Default.Add, "Registrar gasto de hoy")
+                }
+            }
         }
-
-        Spacer(Modifier.weight(1f))
-        Button(
-            onClick = onAddNew,
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Agregar nuevo registro") }
-
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = { /* comparar resultados */ },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = rows.size >= 2   // por ejemplo, solo si hay al menos 2 registros
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
         ) {
-            Text("Comparar resultados")
+            Text("Mi historial de ahorro", style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(8.dp))
+
+            // Card de acceso rápido
+            ElevatedCard(
+                onClick = onOpenDailyExpense,
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            "Registro diario de gastos",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            "Registra lo que gastas hoy 📝",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            if (rows.isEmpty()) {
+                Text("Aún no tienes registros de ahorro.", style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(16.dp))
+            } else {
+                // aquí dejas todo lo que ya tenías: tabs Mensual/Semanal/Todos, tabla, etc.
+                // HeaderRow()
+                // rows.forEach { RowItem(it) }
+            }
+
+            Spacer(Modifier.weight(1f))
+            Button(
+                onClick = onAddNew,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Agregar nuevo registro mensual") }
+
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { /* comparar resultados */ },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = rows.size >= 2
+            ) {
+                Text("Comparar resultados")
+            }
         }
     }
 }
@@ -70,7 +132,8 @@ private fun HistoryPreview() {
                 HistoryRow("Febrero", "Q 7000", "Q 700", "Parcial"),
                 HistoryRow("Enero", "Q 7000", "Q 700", "No cumplido"),
             ),
-            onAddNew = {}
+            onAddNew = {},
+            onOpenDailyExpense = {}
         )
     }
 }

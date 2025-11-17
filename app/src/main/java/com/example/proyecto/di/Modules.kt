@@ -5,6 +5,7 @@ import com.example.proyecto.data.local.AppDatabase
 import com.example.proyecto.data.repository.UserRepository
 import com.example.proyecto.data.repository.UserRepositoryImpl
 import com.example.proyecto.presentation.auth.AuthViewModel
+import com.example.proyecto.presentation.dailyexpense.DailyExpenseViewModel
 import com.example.proyecto.presentation.detail.DetailViewModel
 import com.example.proyecto.presentation.flow.BudgetFlowViewModel
 import com.example.proyecto.presentation.flow.BudgetFormViewModel
@@ -23,10 +24,13 @@ private val dataModule = module {
             androidContext(),
             AppDatabase::class.java,
             "piggy-db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration() // IMPORTANTE: permite migración destructiva durante desarrollo
+            .build()
     }
 
     single { get<AppDatabase>().userDao() }
+    single { get<AppDatabase>().dailyExpenseDao() }
 
     single<UserRepository> { UserRepositoryImpl(get()) }
 }
@@ -37,10 +41,9 @@ private val vmModule = module {
     viewModel { DetailViewModel() }
     viewModel { BudgetFlowViewModel() }
     viewModelOf(::BudgetFormViewModel)
-
     viewModel { HistoryViewModel() }
-
     viewModel { AuthViewModel(get()) }
+    viewModel { DailyExpenseViewModel(get()) }
 }
 
 val appModules = listOf(

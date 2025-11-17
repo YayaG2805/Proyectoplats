@@ -10,6 +10,7 @@ import org.koin.androidx.compose.koinViewModel
 
 import com.example.proyecto.presentation.auth.AuthRoute
 import com.example.proyecto.presentation.auth.SplashScreen
+import com.example.proyecto.presentation.dailyexpense.DailyExpenseRoute
 import com.example.proyecto.presentation.flow.BudgetFormRoute
 import com.example.proyecto.presentation.flow.BudgetFlowViewModel
 import com.example.proyecto.presentation.flow.SummaryRoute
@@ -35,6 +36,7 @@ import org.koin.androidx.compose.koinViewModel
 @Serializable data class SummaryDest(val profileId: Long)
 @Serializable object TipsDest
 @Serializable object HistoryDest
+@Serializable object DailyExpenseDest
 @Serializable object HomeDest
 @Serializable data class NewProfileDest(val redirectToId: Long)
 @Serializable data class DetailDest(val id: Long)
@@ -103,7 +105,6 @@ fun AppNavHost() {
 
             if (data == null) {
                 LaunchedEffect(Unit) {
-                    // Intentar volver al formulario de presupuesto
                     val popped = nav.popBackStack(BudgetFormDest, inclusive = false)
                     if (!popped) {
                         nav.navigate(ModalityDest) {
@@ -130,12 +131,24 @@ fun AppNavHost() {
         }
 
         composable<TipsDest> {
-            TipsRoute(onBack = { nav.popBackStack() })
+            val data = budgetVM.pending.value
+            if (data != null) {
+                TipsRoute(data = data, onBack = { nav.popBackStack() })
+            } else {
+                LaunchedEffect(Unit) { nav.popBackStack() }
+            }
         }
 
         composable<HistoryDest> {
             HistoryRoute(
-                onAddNew = { nav.navigate(NewProfileDest(redirectToId = 0L)) }
+                onAddNew = { nav.navigate(NewProfileDest(redirectToId = 0L)) },
+                navController = nav
+            )
+        }
+
+        composable<DailyExpenseDest> {
+            DailyExpenseRoute(
+                onBack = { nav.popBackStack() }
             )
         }
 
