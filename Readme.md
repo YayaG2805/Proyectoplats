@@ -12,18 +12,9 @@ Servicios:
 Autenticación – Firebase Authentication
 Rol: permitir el registro e inicio de sesión con correo y contraseña, personalizando las metas y protegiendo secciones privadas de la aplicación.
 
-Datos externos – API de tipos de cambio o referencia financiera
-Rol: obtener información de tipo de cambio o referencias económicas para calcular metas en distintas monedas o mostrar equivalentes.
-Uso: permite visualizar el progreso y el valor de las metas en diferentes monedas.
-Ejemplo: se puede utilizar un servicio público gratuito de tipos de cambio como exchangerate.host o Frankfurter.
-
 Base de datos local – Room Database
 Rol: almacenar localmente las metas, aportes, modos de ahorro y progreso.
 Uso: permite acceder a la información sin conexión y mejora el rendimiento de la aplicación.
-
-API fake interna
-Rol: simular respuestas de un servicio web para datos no disponibles en APIs públicas, como plantillas de metas, consejos o logros.
-Uso: utilizada para pruebas y para completar funcionalidades sin conexión.
 
 Librerías
 
