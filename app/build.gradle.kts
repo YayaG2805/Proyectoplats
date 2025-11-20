@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.ui.text)
+
     // Lifecycle
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -61,7 +62,8 @@ dependencies {
     // Koin (DI)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
-// DataStore
+
+    // DataStore
     implementation(libs.datastore.preferences)
 
     // Room
@@ -69,12 +71,11 @@ dependencies {
     implementation(libs.room.ktx)
     kapt(libs.room.compiler)
 
-
-    // Tests
-    // testImplementation(libs.junit)
-    // androidTestImplementation(libs.androidx.junit)
-    // androidTestImplementation(libs.androidx.espresso.core)
-    // androidTestImplementation(libs.androidx.ui.test.junit4)
-    // debugImplementation(libs.androidx.ui.tooling)
-    // debugImplementation(libs.androidx.ui.test.manifest)
+    // ===== RETROFIT - LLAMADA A INTERNET (requisito de entrega) =====
+    // Estas dependencias son para cumplir con el requisito de llamada a Internet
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+    implementation("com.google.code.gson:gson:2.10.1")
 }

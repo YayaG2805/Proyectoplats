@@ -5,6 +5,7 @@ import com.example.proyecto.data.local.AppDatabase
 import com.example.proyecto.data.local.UserPreferences
 import com.example.proyecto.data.repository.UserRepository
 import com.example.proyecto.data.repository.UserRepositoryImpl
+import com.example.proyecto.presentation.api.ExchangeRateViewModel
 import com.example.proyecto.presentation.auth.AuthViewModel
 import com.example.proyecto.presentation.budgetstatus.BudgetStatusViewModel
 import com.example.proyecto.presentation.dailyexpense.DailyExpenseViewModel
@@ -78,6 +79,9 @@ private val vmModule = module {
 
     // SavingsIndexViewModel
     viewModel { SavingsIndexViewModel(get(), get()) }
+
+    // ===== NUEVO: ViewModel para llamada a Internet (requisito de entrega) =====
+    viewModel { ExchangeRateViewModel() }
 }
 
 val appModules = listOf(
